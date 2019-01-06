@@ -5,6 +5,45 @@ use super::cpu::*;
 use super::mem::*;
 use super::util::*;
 
+macro_rules! dword {
+  ($hi:expr, $lo:expr) => {{
+    (($hi as u16) << 0x8) | $lo as u16
+  }};
+}
+
+macro_rules! load_dword_to_reg {
+  ($cpu_dword_setter:ident, $sel:ident) => {{
+    let dw = $sel.read_opcode_dword();
+    $sel.cpu.$cpu_dword_setter(dw);
+  }};
+}
+
+macro_rules! load_word_to_reg {
+  ($reg:ident, $sel:ident) => {{
+    $sel.cpu.$reg = $sel.read_opcode_word();
+  }};
+}
+
+macro_rules! load_word_to_reg_from_reg {
+  ($reg_to:ident, $reg_from:ident, $sel:ident) => {{
+    $sel.cpu.$reg_to = $sel.cpu.$reg_from;
+  }};
+}
+
+macro_rules! load_word_to_reg_from_reg_addr {
+  ($reg_to:ident, $reg_from_hi:ident, $reg_from_lo:ident, $sel:ident) => {{
+    let addr = dword!($sel.cpu.$reg_from_hi, $sel.cpu.$reg_from_lo);
+    $sel.cpu.$reg_to = $sel.read_word(addr);
+  }};
+}
+
+macro_rules! load_word_to_reg_addr_from_reg {
+  ($addr_reg_hi:ident, $addr_reg_lo:ident, $reg_from:ident, $sel:ident) => {{
+    let addr = dword!($sel.cpu.$addr_reg_hi, $sel.cpu.$addr_reg_lo);
+    $sel.write_word(addr, $sel.cpu.$reg_from);
+  }};
+}
+
 #[rustfmt::skip]
 const OPCODE_DUR: [u8; 256] = [
    4, 12,  8,  8,  4,  4,  8,  4, 20,  8,  8,  8,  4,  4,  8,  4, 
@@ -87,18 +126,13 @@ impl Emu {
     }
   }
 
-  pub fn read_opcode_word(&mut self) -> u8 {
-    let addr = self.cpu.pc_inc();
-    self.read_word(addr)
-  }
-
   pub fn read_instruction(&mut self) {
     let opcode = self.read_opcode_word();
     match opcode {
       // 0x00 | NOP | 1 | 4 | - - - -
       0x00 => {}
       // 0x01 | LD BC,d16 | 3 | 12 | - - - -
-      0x01 => unimplemented!("Opcode 0x01 is not yet implemented"),
+      0x01 => load_dword_to_reg!(set_bc, self),
       // 0x02 | LD (BC),A | 1 | 8 | - - - -
       0x02 => unimplemented!("Opcode 0x02 is not yet implemented"),
       // 0x03 | INC BC | 1 | 8 | - - - -
@@ -108,7 +142,7 @@ impl Emu {
       // 0x05 | DEC B | 1 | 4 | Z 1 H -
       0x05 => unimplemented!("Opcode 0x05 is not yet implemented"),
       // 0x06 | LD B,d8 | 2 | 8 | - - - -
-      0x06 => unimplemented!("Opcode 0x06 is not yet implemented"),
+      0x06 => load_word_to_reg!(reg_b, self),
       // 0x07 | RLCA | 1 | 4 | 0 0 0 C
       0x07 => unimplemented!("Opcode 0x07 is not yet implemented"),
       // 0x08 | LD (a16),SP | 3 | 20 | - - - -
@@ -116,7 +150,7 @@ impl Emu {
       // 0x09 | ADD HL,BC | 1 | 8 | - 0 H C
       0x09 => unimplemented!("Opcode 0x09 is not yet implemented"),
       // 0x0a | LD A,(BC) | 1 | 8 | - - - -
-      0x0a => unimplemented!("Opcode 0x0a is not yet implemented"),
+      0x0a => load_word_to_reg_from_reg_addr!(reg_a, reg_b, reg_c, self),
       // 0x0b | DEC BC | 1 | 8 | - - - -
       0x0b => unimplemented!("Opcode 0x0b is not yet implemented"),
       // 0x0c | INC C | 1 | 4 | Z 0 H -
@@ -124,13 +158,13 @@ impl Emu {
       // 0x0d | DEC C | 1 | 4 | Z 1 H -
       0x0d => unimplemented!("Opcode 0x0d is not yet implemented"),
       // 0x0e | LD C,d8 | 2 | 8 | - - - -
-      0x0e => unimplemented!("Opcode 0x0e is not yet implemented"),
+      0x0e => load_word_to_reg!(reg_c, self),
       // 0x0f | RRCA | 1 | 4 | 0 0 0 C
       0x0f => unimplemented!("Opcode 0x0f is not yet implemented"),
       // 0x10 | STOP 0 | 2 | 4 | - - - -
       0x10 => unimplemented!("Opcode 0x10 is not yet implemented"),
       // 0x11 | LD DE,d16 | 3 | 12 | - - - -
-      0x11 => unimplemented!("Opcode 0x11 is not yet implemented"),
+      0x11 => load_dword_to_reg!(set_de, self),
       // 0x12 | LD (DE),A | 1 | 8 | - - - -
       0x12 => unimplemented!("Opcode 0x12 is not yet implemented"),
       // 0x13 | INC DE | 1 | 8 | - - - -
@@ -140,7 +174,7 @@ impl Emu {
       // 0x15 | DEC D | 1 | 4 | Z 1 H -
       0x15 => unimplemented!("Opcode 0x15 is not yet implemented"),
       // 0x16 | LD D,d8 | 2 | 8 | - - - -
-      0x16 => unimplemented!("Opcode 0x16 is not yet implemented"),
+      0x16 => load_word_to_reg!(reg_d, self),
       // 0x17 | RLA | 1 | 4 | 0 0 0 C
       0x17 => unimplemented!("Opcode 0x17 is not yet implemented"),
       // 0x18 | JR r8 | 2 | 12 | - - - -
@@ -148,7 +182,7 @@ impl Emu {
       // 0x19 | ADD HL,DE | 1 | 8 | - 0 H C
       0x19 => unimplemented!("Opcode 0x19 is not yet implemented"),
       // 0x1a | LD A,(DE) | 1 | 8 | - - - -
-      0x1a => unimplemented!("Opcode 0x1a is not yet implemented"),
+      0x1a => load_word_to_reg_from_reg_addr!(reg_a, reg_d, reg_e, self),
       // 0x1b | DEC DE | 1 | 8 | - - - -
       0x1b => unimplemented!("Opcode 0x1b is not yet implemented"),
       // 0x1c | INC E | 1 | 4 | Z 0 H -
@@ -156,13 +190,13 @@ impl Emu {
       // 0x1d | DEC E | 1 | 4 | Z 1 H -
       0x1d => unimplemented!("Opcode 0x1d is not yet implemented"),
       // 0x1e | LD E,d8 | 2 | 8 | - - - -
-      0x1e => unimplemented!("Opcode 0x1e is not yet implemented"),
+      0x1e => load_word_to_reg!(reg_e, self),
       // 0x1f | RRA | 1 | 4 | 0 0 0 C
       0x1f => unimplemented!("Opcode 0x1f is not yet implemented"),
       // 0x20 | JR NZ,r8 | 2 | 12/8 | - - - -
       0x20 => unimplemented!("Opcode 0x20 is not yet implemented"),
       // 0x21 | LD HL,d16 | 3 | 12 | - - - -
-      0x21 => unimplemented!("Opcode 0x21 is not yet implemented"),
+      0x21 => load_dword_to_reg!(set_hl, self),
       // 0x22 | LD (HL+),A | 1 | 8 | - - - -
       0x22 => unimplemented!("Opcode 0x22 is not yet implemented"),
       // 0x23 | INC HL | 1 | 8 | - - - -
@@ -172,7 +206,7 @@ impl Emu {
       // 0x25 | DEC H | 1 | 4 | Z 1 H -
       0x25 => unimplemented!("Opcode 0x25 is not yet implemented"),
       // 0x26 | LD H,d8 | 2 | 8 | - - - -
-      0x26 => unimplemented!("Opcode 0x26 is not yet implemented"),
+      0x26 => load_word_to_reg!(reg_h, self),
       // 0x27 | DAA | 1 | 4 | Z - 0 C
       0x27 => unimplemented!("Opcode 0x27 is not yet implemented"),
       // 0x28 | JR Z,r8 | 2 | 12/8 | - - - -
@@ -188,13 +222,13 @@ impl Emu {
       // 0x2d | DEC L | 1 | 4 | Z 1 H -
       0x2d => unimplemented!("Opcode 0x2d is not yet implemented"),
       // 0x2e | LD L,d8 | 2 | 8 | - - - -
-      0x2e => unimplemented!("Opcode 0x2e is not yet implemented"),
+      0x2e => load_word_to_reg!(reg_l, self),
       // 0x2f | CPL | 1 | 4 | - 1 1 -
       0x2f => unimplemented!("Opcode 0x2f is not yet implemented"),
       // 0x30 | JR NC,r8 | 2 | 12/8 | - - - -
       0x30 => unimplemented!("Opcode 0x30 is not yet implemented"),
       // 0x31 | LD SP,d16 | 3 | 12 | - - - -
-      0x31 => unimplemented!("Opcode 0x31 is not yet implemented"),
+      0x31 => self.cpu.sp = self.read_opcode_dword(),
       // 0x32 | LD (HL-),A | 1 | 8 | - - - -
       0x32 => unimplemented!("Opcode 0x32 is not yet implemented"),
       // 0x33 | INC SP | 1 | 8 | - - - -
@@ -224,133 +258,133 @@ impl Emu {
       // 0x3f | CCF | 1 | 4 | - 0 0 C
       0x3f => unimplemented!("Opcode 0x3f is not yet implemented"),
       // 0x40 | LD B,B | 1 | 4 | - - - -
-      0x40 => unimplemented!("Opcode 0x40 is not yet implemented"),
+      0x40 => load_word_to_reg_from_reg!(reg_b, reg_b, self),
       // 0x41 | LD B,C | 1 | 4 | - - - -
-      0x41 => unimplemented!("Opcode 0x41 is not yet implemented"),
+      0x41 => load_word_to_reg_from_reg!(reg_b, reg_c, self),
       // 0x42 | LD B,D | 1 | 4 | - - - -
-      0x42 => unimplemented!("Opcode 0x42 is not yet implemented"),
+      0x42 => load_word_to_reg_from_reg!(reg_b, reg_d, self),
       // 0x43 | LD B,E | 1 | 4 | - - - -
-      0x43 => unimplemented!("Opcode 0x43 is not yet implemented"),
+      0x43 => load_word_to_reg_from_reg!(reg_b, reg_e, self),
       // 0x44 | LD B,H | 1 | 4 | - - - -
-      0x44 => unimplemented!("Opcode 0x44 is not yet implemented"),
+      0x44 => load_word_to_reg_from_reg!(reg_b, reg_h, self),
       // 0x45 | LD B,L | 1 | 4 | - - - -
-      0x45 => unimplemented!("Opcode 0x45 is not yet implemented"),
+      0x45 => load_word_to_reg_from_reg!(reg_b, reg_l, self),
       // 0x46 | LD B,(HL) | 1 | 8 | - - - -
-      0x46 => unimplemented!("Opcode 0x46 is not yet implemented"),
+      0x46 => load_word_to_reg_from_reg_addr!(reg_b, reg_h, reg_l, self),
       // 0x47 | LD B,A | 1 | 4 | - - - -
-      0x47 => unimplemented!("Opcode 0x47 is not yet implemented"),
+      0x47 => load_word_to_reg_from_reg!(reg_b, reg_a, self),
       // 0x48 | LD C,B | 1 | 4 | - - - -
-      0x48 => unimplemented!("Opcode 0x48 is not yet implemented"),
+      0x48 => load_word_to_reg_from_reg!(reg_c, reg_b, self),
       // 0x49 | LD C,C | 1 | 4 | - - - -
-      0x49 => unimplemented!("Opcode 0x49 is not yet implemented"),
+      0x49 => load_word_to_reg_from_reg!(reg_c, reg_c, self),
       // 0x4a | LD C,D | 1 | 4 | - - - -
-      0x4a => unimplemented!("Opcode 0x4a is not yet implemented"),
+      0x4a => load_word_to_reg_from_reg!(reg_c, reg_d, self),
       // 0x4b | LD C,E | 1 | 4 | - - - -
-      0x4b => unimplemented!("Opcode 0x4b is not yet implemented"),
+      0x4b => load_word_to_reg_from_reg!(reg_c, reg_e, self),
       // 0x4c | LD C,H | 1 | 4 | - - - -
-      0x4c => unimplemented!("Opcode 0x4c is not yet implemented"),
+      0x4c => load_word_to_reg_from_reg!(reg_c, reg_h, self),
       // 0x4d | LD C,L | 1 | 4 | - - - -
-      0x4d => unimplemented!("Opcode 0x4d is not yet implemented"),
+      0x4d => load_word_to_reg_from_reg!(reg_c, reg_l, self),
       // 0x4e | LD C,(HL) | 1 | 8 | - - - -
-      0x4e => unimplemented!("Opcode 0x4e is not yet implemented"),
+      0x4e => load_word_to_reg_from_reg_addr!(reg_c, reg_h, reg_l, self),
       // 0x4f | LD C,A | 1 | 4 | - - - -
-      0x4f => unimplemented!("Opcode 0x4f is not yet implemented"),
+      0x4f => load_word_to_reg_from_reg!(reg_c, reg_a, self),
       // 0x50 | LD D,B | 1 | 4 | - - - -
-      0x50 => unimplemented!("Opcode 0x50 is not yet implemented"),
+      0x50 => load_word_to_reg_from_reg!(reg_d, reg_b, self),
       // 0x51 | LD D,C | 1 | 4 | - - - -
-      0x51 => unimplemented!("Opcode 0x51 is not yet implemented"),
+      0x51 => load_word_to_reg_from_reg!(reg_d, reg_c, self),
       // 0x52 | LD D,D | 1 | 4 | - - - -
-      0x52 => unimplemented!("Opcode 0x52 is not yet implemented"),
+      0x52 => load_word_to_reg_from_reg!(reg_d, reg_d, self),
       // 0x53 | LD D,E | 1 | 4 | - - - -
-      0x53 => unimplemented!("Opcode 0x53 is not yet implemented"),
+      0x53 => load_word_to_reg_from_reg!(reg_d, reg_e, self),
       // 0x54 | LD D,H | 1 | 4 | - - - -
-      0x54 => unimplemented!("Opcode 0x54 is not yet implemented"),
+      0x54 => load_word_to_reg_from_reg!(reg_d, reg_h, self),
       // 0x55 | LD D,L | 1 | 4 | - - - -
-      0x55 => unimplemented!("Opcode 0x55 is not yet implemented"),
+      0x55 => load_word_to_reg_from_reg!(reg_d, reg_l, self),
       // 0x56 | LD D,(HL) | 1 | 8 | - - - -
-      0x56 => unimplemented!("Opcode 0x56 is not yet implemented"),
+      0x56 => load_word_to_reg_from_reg_addr!(reg_d, reg_h, reg_l, self),
       // 0x57 | LD D,A | 1 | 4 | - - - -
-      0x57 => unimplemented!("Opcode 0x57 is not yet implemented"),
+      0x57 => load_word_to_reg_from_reg!(reg_d, reg_a, self),
       // 0x58 | LD E,B | 1 | 4 | - - - -
-      0x58 => unimplemented!("Opcode 0x58 is not yet implemented"),
+      0x58 => load_word_to_reg_from_reg!(reg_e, reg_b, self),
       // 0x59 | LD E,C | 1 | 4 | - - - -
-      0x59 => unimplemented!("Opcode 0x59 is not yet implemented"),
+      0x59 => load_word_to_reg_from_reg!(reg_e, reg_c, self),
       // 0x5a | LD E,D | 1 | 4 | - - - -
-      0x5a => unimplemented!("Opcode 0x5a is not yet implemented"),
+      0x5a => load_word_to_reg_from_reg!(reg_e, reg_d, self),
       // 0x5b | LD E,E | 1 | 4 | - - - -
-      0x5b => unimplemented!("Opcode 0x5b is not yet implemented"),
+      0x5b => load_word_to_reg_from_reg!(reg_e, reg_e, self),
       // 0x5c | LD E,H | 1 | 4 | - - - -
-      0x5c => unimplemented!("Opcode 0x5c is not yet implemented"),
+      0x5c => load_word_to_reg_from_reg!(reg_e, reg_h, self),
       // 0x5d | LD E,L | 1 | 4 | - - - -
-      0x5d => unimplemented!("Opcode 0x5d is not yet implemented"),
+      0x5d => load_word_to_reg_from_reg!(reg_e, reg_l, self),
       // 0x5e | LD E,(HL) | 1 | 8 | - - - -
-      0x5e => unimplemented!("Opcode 0x5e is not yet implemented"),
+      0x5e => load_word_to_reg_from_reg_addr!(reg_e, reg_h, reg_l, self),
       // 0x5f | LD E,A | 1 | 4 | - - - -
-      0x5f => unimplemented!("Opcode 0x5f is not yet implemented"),
+      0x5f => load_word_to_reg_from_reg!(reg_e, reg_a, self),
       // 0x60 | LD H,B | 1 | 4 | - - - -
-      0x60 => unimplemented!("Opcode 0x60 is not yet implemented"),
+      0x60 => load_word_to_reg_from_reg!(reg_h, reg_b, self),
       // 0x61 | LD H,C | 1 | 4 | - - - -
-      0x61 => unimplemented!("Opcode 0x61 is not yet implemented"),
+      0x61 => load_word_to_reg_from_reg!(reg_h, reg_c, self),
       // 0x62 | LD H,D | 1 | 4 | - - - -
-      0x62 => unimplemented!("Opcode 0x62 is not yet implemented"),
+      0x62 => load_word_to_reg_from_reg!(reg_h, reg_d, self),
       // 0x63 | LD H,E | 1 | 4 | - - - -
-      0x63 => unimplemented!("Opcode 0x63 is not yet implemented"),
+      0x63 => load_word_to_reg_from_reg!(reg_h, reg_e, self),
       // 0x64 | LD H,H | 1 | 4 | - - - -
-      0x64 => unimplemented!("Opcode 0x64 is not yet implemented"),
+      0x64 => load_word_to_reg_from_reg!(reg_h, reg_h, self),
       // 0x65 | LD H,L | 1 | 4 | - - - -
-      0x65 => unimplemented!("Opcode 0x65 is not yet implemented"),
+      0x65 => load_word_to_reg_from_reg!(reg_h, reg_l, self),
       // 0x66 | LD H,(HL) | 1 | 8 | - - - -
-      0x66 => unimplemented!("Opcode 0x66 is not yet implemented"),
+      0x66 => load_word_to_reg_from_reg_addr!(reg_h, reg_h, reg_l, self),
       // 0x67 | LD H,A | 1 | 4 | - - - -
-      0x67 => unimplemented!("Opcode 0x67 is not yet implemented"),
+      0x67 => load_word_to_reg_from_reg!(reg_h, reg_a, self),
       // 0x68 | LD L,B | 1 | 4 | - - - -
-      0x68 => unimplemented!("Opcode 0x68 is not yet implemented"),
+      0x68 => load_word_to_reg_from_reg!(reg_l, reg_b, self),
       // 0x69 | LD L,C | 1 | 4 | - - - -
-      0x69 => unimplemented!("Opcode 0x69 is not yet implemented"),
+      0x69 => load_word_to_reg_from_reg!(reg_l, reg_c, self),
       // 0x6a | LD L,D | 1 | 4 | - - - -
-      0x6a => unimplemented!("Opcode 0x6a is not yet implemented"),
+      0x6a => load_word_to_reg_from_reg!(reg_l, reg_d, self),
       // 0x6b | LD L,E | 1 | 4 | - - - -
-      0x6b => unimplemented!("Opcode 0x6b is not yet implemented"),
+      0x6b => load_word_to_reg_from_reg!(reg_l, reg_e, self),
       // 0x6c | LD L,H | 1 | 4 | - - - -
-      0x6c => unimplemented!("Opcode 0x6c is not yet implemented"),
+      0x6c => load_word_to_reg_from_reg!(reg_l, reg_h, self),
       // 0x6d | LD L,L | 1 | 4 | - - - -
-      0x6d => unimplemented!("Opcode 0x6d is not yet implemented"),
+      0x6d => load_word_to_reg_from_reg!(reg_l, reg_l, self),
       // 0x6e | LD L,(HL) | 1 | 8 | - - - -
-      0x6e => unimplemented!("Opcode 0x6e is not yet implemented"),
+      0x6e => load_word_to_reg_from_reg_addr!(reg_l, reg_h, reg_l, self),
       // 0x6f | LD L,A | 1 | 4 | - - - -
-      0x6f => unimplemented!("Opcode 0x6f is not yet implemented"),
+      0x6f => load_word_to_reg_from_reg!(reg_l, reg_a, self),
       // 0x70 | LD (HL),B | 1 | 8 | - - - -
-      0x70 => unimplemented!("Opcode 0x70 is not yet implemented"),
+      0x70 => load_word_to_reg_addr_from_reg!(reg_h, reg_l, reg_b, self),
       // 0x71 | LD (HL),C | 1 | 8 | - - - -
-      0x71 => unimplemented!("Opcode 0x71 is not yet implemented"),
+      0x71 => load_word_to_reg_addr_from_reg!(reg_h, reg_l, reg_c, self),
       // 0x72 | LD (HL),D | 1 | 8 | - - - -
-      0x72 => unimplemented!("Opcode 0x72 is not yet implemented"),
+      0x72 => load_word_to_reg_addr_from_reg!(reg_h, reg_l, reg_d, self),
       // 0x73 | LD (HL),E | 1 | 8 | - - - -
-      0x73 => unimplemented!("Opcode 0x73 is not yet implemented"),
+      0x73 => load_word_to_reg_addr_from_reg!(reg_h, reg_l, reg_e, self),
       // 0x74 | LD (HL),H | 1 | 8 | - - - -
-      0x74 => unimplemented!("Opcode 0x74 is not yet implemented"),
+      0x74 => load_word_to_reg_addr_from_reg!(reg_h, reg_l, reg_h, self),
       // 0x75 | LD (HL),L | 1 | 8 | - - - -
-      0x75 => unimplemented!("Opcode 0x75 is not yet implemented"),
+      0x75 => load_word_to_reg_addr_from_reg!(reg_h, reg_l, reg_l, self),
       // 0x76 | HALT | 1 | 4 | - - - -
       0x76 => unimplemented!("Opcode 0x76 is not yet implemented"),
       // 0x77 | LD (HL),A | 1 | 8 | - - - -
-      0x77 => unimplemented!("Opcode 0x77 is not yet implemented"),
+      0x77 => load_word_to_reg_addr_from_reg!(reg_h, reg_l, reg_a, self),
       // 0x78 | LD A,B | 1 | 4 | - - - -
-      0x78 => unimplemented!("Opcode 0x78 is not yet implemented"),
+      0x78 => load_word_to_reg_from_reg!(reg_a, reg_b, self),
       // 0x79 | LD A,C | 1 | 4 | - - - -
-      0x79 => unimplemented!("Opcode 0x79 is not yet implemented"),
+      0x79 => load_word_to_reg_from_reg!(reg_a, reg_c, self),
       // 0x7a | LD A,D | 1 | 4 | - - - -
-      0x7a => unimplemented!("Opcode 0x7a is not yet implemented"),
+      0x7a => load_word_to_reg_from_reg!(reg_a, reg_d, self),
       // 0x7b | LD A,E | 1 | 4 | - - - -
-      0x7b => unimplemented!("Opcode 0x7b is not yet implemented"),
+      0x7b => load_word_to_reg_from_reg!(reg_a, reg_e, self),
       // 0x7c | LD A,H | 1 | 4 | - - - -
-      0x7c => unimplemented!("Opcode 0x7c is not yet implemented"),
+      0x7c => load_word_to_reg_from_reg!(reg_a, reg_h, self),
       // 0x7d | LD A,L | 1 | 4 | - - - -
-      0x7d => unimplemented!("Opcode 0x7d is not yet implemented"),
+      0x7d => load_word_to_reg_from_reg!(reg_a, reg_l, self),
       // 0x7e | LD A,(HL) | 1 | 8 | - - - -
-      0x7e => unimplemented!("Opcode 0x7e is not yet implemented"),
+      0x7e => load_word_to_reg_from_reg_addr!(reg_a, reg_h, reg_l, self),
       // 0x7f | LD A,A | 1 | 4 | - - - -
-      0x7f => unimplemented!("Opcode 0x7f is not yet implemented"),
+      0x7f => load_word_to_reg_from_reg!(reg_a, reg_a, self),
       // 0x80 | ADD A,B | 1 | 4 | Z 0 H C
       0x80 => unimplemented!("Opcode 0x80 is not yet implemented"),
       // 0x81 | ADD A,C | 1 | 4 | Z 0 H C
@@ -1118,6 +1152,21 @@ impl Emu {
     } else {
       self.mem.read_word(addr)
     }
+  }
+
+  fn write_word(&self, addr: u16, w: u8) {
+    unimplemented!("Write on unknown address: {:?}", addr);
+  }
+
+  pub fn read_opcode_word(&mut self) -> u8 {
+    let addr = self.cpu.pc_inc();
+    self.read_word(addr)
+  }
+
+  fn read_opcode_dword(&mut self) -> u16 {
+    let lo = self.read_opcode_word();
+    let hi = self.read_opcode_word();
+    ((hi as u16) << 0x8) | lo as u16
   }
 
   fn read_dmg_rom(&mut self) {
