@@ -15,14 +15,16 @@ impl Mem {
   }
 
   pub fn write_word(&mut self, addr: u16, w: u8) {
-    if Util::in_range(0xe000, 0xfe00, addr) {
+    if Util::in_range(0x8000, 0xa000, addr) {
+      self.mem[addr as usize] = w;
+    } else if Util::in_range(0xe000, 0xfe00, addr) {
       self.mem[addr as usize] = w;
       self.mem[(0xc000 + (addr - 0xe000)) as usize] = w;
     } else if Util::in_range(0xc000, 0xde00, addr) {
       self.mem[addr as usize] = w;
       self.mem[(0xe000 + (addr - 0xc000)) as usize] = w;
     } else {
-      unimplemented!("Memory write to {:?} is not implemented.", addr);
+      unimplemented!("Memory write to 0x{:x} is not implemented.", addr);
     }
   }
 

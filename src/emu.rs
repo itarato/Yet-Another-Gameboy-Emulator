@@ -3,46 +3,8 @@ use std::io::Read;
 
 use super::cpu::*;
 use super::mem::*;
+
 use super::util::*;
-
-macro_rules! dword {
-  ($hi:expr, $lo:expr) => {{
-    (($hi as u16) << 0x8) | $lo as u16
-  }};
-}
-
-macro_rules! load_dword_to_reg {
-  ($cpu_dword_setter:ident, $sel:ident) => {{
-    let dw = $sel.read_opcode_dword();
-    $sel.cpu.$cpu_dword_setter(dw);
-  }};
-}
-
-macro_rules! load_word_to_reg {
-  ($reg:ident, $sel:ident) => {{
-    $sel.cpu.$reg = $sel.read_opcode_word();
-  }};
-}
-
-macro_rules! load_word_to_reg_from_reg {
-  ($reg_to:ident, $reg_from:ident, $sel:ident) => {{
-    $sel.cpu.$reg_to = $sel.cpu.$reg_from;
-  }};
-}
-
-macro_rules! load_word_to_reg_from_reg_addr {
-  ($reg_to:ident, $reg_from_hi:ident, $reg_from_lo:ident, $sel:ident) => {{
-    let addr = dword!($sel.cpu.$reg_from_hi, $sel.cpu.$reg_from_lo);
-    $sel.cpu.$reg_to = $sel.read_word(addr);
-  }};
-}
-
-macro_rules! load_word_to_reg_addr_from_reg {
-  ($addr_reg_hi:ident, $addr_reg_lo:ident, $reg_from:ident, $sel:ident) => {{
-    let addr = dword!($sel.cpu.$addr_reg_hi, $sel.cpu.$addr_reg_lo);
-    $sel.write_word(addr, $sel.cpu.$reg_from);
-  }};
-}
 
 #[rustfmt::skip]
 const OPCODE_DUR: [u8; 256] = [
@@ -128,6 +90,9 @@ impl Emu {
 
   pub fn read_instruction(&mut self) {
     let opcode = self.read_opcode_word();
+
+    info!("Executing opcode: 0x{:x}", opcode);
+
     match opcode {
       // 0x00 | NOP | 1 | 4 | - - - -
       0x00 => {}
@@ -230,7 +195,10 @@ impl Emu {
       // 0x31 | LD SP,d16 | 3 | 12 | - - - -
       0x31 => self.cpu.sp = self.read_opcode_dword(),
       // 0x32 | LD (HL-),A | 1 | 8 | - - - -
-      0x32 => unimplemented!("Opcode 0x32 is not yet implemented"),
+      0x32 => {
+        load_word_to_reg_addr_from_reg!(reg_h, reg_l, reg_a, self);
+        self.cpu.dec_hl();
+      }
       // 0x33 | INC SP | 1 | 8 | - - - -
       0x33 => unimplemented!("Opcode 0x33 is not yet implemented"),
       // 0x34 | INC (HL) | 1 | 12 | Z 0 H -
@@ -466,21 +434,21 @@ impl Emu {
       // 0xa7 | AND A | 1 | 4 | Z 0 1 0
       0xa7 => unimplemented!("Opcode 0xa7 is not yet implemented"),
       // 0xa8 | XOR B | 1 | 4 | Z 0 0 0
-      0xa8 => unimplemented!("Opcode 0xa8 is not yet implemented"),
+      0xa8 => xor_reg!(reg_b, self),
       // 0xa9 | XOR C | 1 | 4 | Z 0 0 0
-      0xa9 => unimplemented!("Opcode 0xa9 is not yet implemented"),
+      0xa9 => xor_reg!(reg_c, self),
       // 0xaa | XOR D | 1 | 4 | Z 0 0 0
-      0xaa => unimplemented!("Opcode 0xaa is not yet implemented"),
+      0xaa => xor_reg!(reg_d, self),
       // 0xab | XOR E | 1 | 4 | Z 0 0 0
-      0xab => unimplemented!("Opcode 0xab is not yet implemented"),
+      0xab => xor_reg!(reg_e, self),
       // 0xac | XOR H | 1 | 4 | Z 0 0 0
-      0xac => unimplemented!("Opcode 0xac is not yet implemented"),
+      0xac => xor_reg!(reg_h, self),
       // 0xad | XOR L | 1 | 4 | Z 0 0 0
-      0xad => unimplemented!("Opcode 0xad is not yet implemented"),
+      0xad => xor_reg!(reg_l, self),
       // 0xae | XOR (HL) | 1 | 8 | Z 0 0 0
       0xae => unimplemented!("Opcode 0xae is not yet implemented"),
       // 0xaf | XOR A | 1 | 4 | Z 0 0 0
-      0xaf => unimplemented!("Opcode 0xaf is not yet implemented"),
+      0xaf => xor_reg!(reg_a, self),
       // 0xb0 | OR B | 1 | 4 | Z 0 0 0
       0xb0 => unimplemented!("Opcode 0xb0 is not yet implemented"),
       // 0xb1 | OR C | 1 | 4 | Z 0 0 0
@@ -1154,8 +1122,16 @@ impl Emu {
     }
   }
 
-  fn write_word(&self, addr: u16, w: u8) {
-    unimplemented!("Write on unknown address: {:?}", addr);
+  fn write_word(&mut self, addr: u16, w: u8) {
+    if Util::in_range(0x8000, 0xa000, addr) {
+      self.mem.write_word(addr, w);
+    } else {
+      unimplemented!(
+        "Write on unknown address: 0x{:x} the value: 0x{:x}",
+        addr,
+        w
+      );
+    }
   }
 
   pub fn read_opcode_word(&mut self) -> u8 {

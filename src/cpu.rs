@@ -1,12 +1,3 @@
-macro_rules! set_dword_register {
-    ($reg_hi:ident, $reg_lo:ident, $fname:ident) => (
-      pub fn $fname(&mut self, dw: u16) {
-        self.$reg_hi = (dw >> 0x8) as u8;
-        self.$reg_lo = (dw & 0xff) as u8;
-      }
-    )
-}
-
 #[derive(Default)]
 pub struct Cpu {
   pub reg_a: u8,
@@ -28,10 +19,15 @@ impl Cpu {
 
   pub fn reset(&mut self) {}
 
-  set_dword_register! { reg_a, reg_f, set_af }
-  set_dword_register! { reg_b, reg_c, set_bc }
-  set_dword_register! { reg_d, reg_e, set_de }
-  set_dword_register! { reg_h, reg_l, set_hl }
+  set_dword_register! { set_af, reg_a, reg_f }
+  set_dword_register! { set_bc, reg_b, reg_c }
+  set_dword_register! { set_de, reg_d, reg_e }
+  set_dword_register! { set_hl, reg_h, reg_l }
+
+  dec_dword_reg! { dec_af, reg_a, reg_f }
+  dec_dword_reg! { dec_bc, reg_b, reg_c }
+  dec_dword_reg! { dec_de, reg_d, reg_e }
+  dec_dword_reg! { dec_hl, reg_h, reg_l }
 
   pub fn pc_inc(&mut self) -> u16 {
     let pc = self.pc;
