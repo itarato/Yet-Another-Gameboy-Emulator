@@ -159,7 +159,13 @@ impl Emu {
       // 0x1f | RRA | 1 | 4 | 0 0 0 C
       0x1f => unimplemented!("Opcode 0x1f is not yet implemented"),
       // 0x20 | JR NZ,r8 | 2 | 12/8 | - - - -
-      0x20 => unimplemented!("Opcode 0x20 is not yet implemented"),
+      0x20 => {
+        let offs = self.read_opcode_word() as i8;
+        if !self.cpu.flag_zero() {
+          self.cycles += OPCODE_DUR_ALTERNATIVE[opcode as usize] as u64;
+          self.cpu.pc = (self.cpu.pc as i32 + offs as i32) as u16;
+        }
+      }
       // 0x21 | LD HL,d16 | 3 | 12 | - - - -
       0x21 => load_dword_to_reg!(set_hl, self),
       // 0x22 | LD (HL+),A | 1 | 8 | - - - -
@@ -725,133 +731,133 @@ impl Emu {
       // 0x3f | SRL A | 2 | 8 | Z 0 0 C
       0x3f => unimplemented!("Prefix opcode 0x3f is not yet implemented"),
       // 0x40 | BIT 0,B | 2 | 8 | Z 0 1 -
-      0x40 => unimplemented!("Prefix opcode 0x40 is not yet implemented"),
+      0x40 => op_bit_test!(self, reg_b, 0),
       // 0x41 | BIT 0,C | 2 | 8 | Z 0 1 -
-      0x41 => unimplemented!("Prefix opcode 0x41 is not yet implemented"),
+      0x41 => op_bit_test!(self, reg_c, 0),
       // 0x42 | BIT 0,D | 2 | 8 | Z 0 1 -
-      0x42 => unimplemented!("Prefix opcode 0x42 is not yet implemented"),
+      0x42 => op_bit_test!(self, reg_d, 0),
       // 0x43 | BIT 0,E | 2 | 8 | Z 0 1 -
-      0x43 => unimplemented!("Prefix opcode 0x43 is not yet implemented"),
+      0x43 => op_bit_test!(self, reg_e, 0),
       // 0x44 | BIT 0,H | 2 | 8 | Z 0 1 -
-      0x44 => unimplemented!("Prefix opcode 0x44 is not yet implemented"),
+      0x44 => op_bit_test!(self, reg_h, 0),
       // 0x45 | BIT 0,L | 2 | 8 | Z 0 1 -
-      0x45 => unimplemented!("Prefix opcode 0x45 is not yet implemented"),
+      0x45 => op_bit_test!(self, reg_l, 0),
       // 0x46 | BIT 0,(HL) | 2 | 16 | Z 0 1 -
       0x46 => unimplemented!("Prefix opcode 0x46 is not yet implemented"),
       // 0x47 | BIT 0,A | 2 | 8 | Z 0 1 -
-      0x47 => unimplemented!("Prefix opcode 0x47 is not yet implemented"),
+      0x47 => op_bit_test!(self, reg_a, 0),
       // 0x48 | BIT 1,B | 2 | 8 | Z 0 1 -
-      0x48 => unimplemented!("Prefix opcode 0x48 is not yet implemented"),
+      0x48 => op_bit_test!(self, reg_b, 1),
       // 0x49 | BIT 1,C | 2 | 8 | Z 0 1 -
-      0x49 => unimplemented!("Prefix opcode 0x49 is not yet implemented"),
+      0x49 => op_bit_test!(self, reg_c, 1),
       // 0x4a | BIT 1,D | 2 | 8 | Z 0 1 -
-      0x4a => unimplemented!("Prefix opcode 0x4a is not yet implemented"),
+      0x4a => op_bit_test!(self, reg_d, 1),
       // 0x4b | BIT 1,E | 2 | 8 | Z 0 1 -
-      0x4b => unimplemented!("Prefix opcode 0x4b is not yet implemented"),
+      0x4b => op_bit_test!(self, reg_e, 1),
       // 0x4c | BIT 1,H | 2 | 8 | Z 0 1 -
-      0x4c => unimplemented!("Prefix opcode 0x4c is not yet implemented"),
+      0x4c => op_bit_test!(self, reg_h, 1),
       // 0x4d | BIT 1,L | 2 | 8 | Z 0 1 -
-      0x4d => unimplemented!("Prefix opcode 0x4d is not yet implemented"),
+      0x4d => op_bit_test!(self, reg_l, 1),
       // 0x4e | BIT 1,(HL) | 2 | 16 | Z 0 1 -
       0x4e => unimplemented!("Prefix opcode 0x4e is not yet implemented"),
       // 0x4f | BIT 1,A | 2 | 8 | Z 0 1 -
-      0x4f => unimplemented!("Prefix opcode 0x4f is not yet implemented"),
+      0x4f => op_bit_test!(self, reg_a, 1),
       // 0x50 | BIT 2,B | 2 | 8 | Z 0 1 -
-      0x50 => unimplemented!("Prefix opcode 0x50 is not yet implemented"),
+      0x50 => op_bit_test!(self, reg_b, 2),
       // 0x51 | BIT 2,C | 2 | 8 | Z 0 1 -
-      0x51 => unimplemented!("Prefix opcode 0x51 is not yet implemented"),
+      0x51 => op_bit_test!(self, reg_c, 2),
       // 0x52 | BIT 2,D | 2 | 8 | Z 0 1 -
-      0x52 => unimplemented!("Prefix opcode 0x52 is not yet implemented"),
+      0x52 => op_bit_test!(self, reg_d, 2),
       // 0x53 | BIT 2,E | 2 | 8 | Z 0 1 -
-      0x53 => unimplemented!("Prefix opcode 0x53 is not yet implemented"),
+      0x53 => op_bit_test!(self, reg_e, 2),
       // 0x54 | BIT 2,H | 2 | 8 | Z 0 1 -
-      0x54 => unimplemented!("Prefix opcode 0x54 is not yet implemented"),
+      0x54 => op_bit_test!(self, reg_h, 2),
       // 0x55 | BIT 2,L | 2 | 8 | Z 0 1 -
-      0x55 => unimplemented!("Prefix opcode 0x55 is not yet implemented"),
+      0x55 => op_bit_test!(self, reg_l, 2),
       // 0x56 | BIT 2,(HL) | 2 | 16 | Z 0 1 -
       0x56 => unimplemented!("Prefix opcode 0x56 is not yet implemented"),
       // 0x57 | BIT 2,A | 2 | 8 | Z 0 1 -
-      0x57 => unimplemented!("Prefix opcode 0x57 is not yet implemented"),
+      0x57 => op_bit_test!(self, reg_a, 2),
       // 0x58 | BIT 3,B | 2 | 8 | Z 0 1 -
-      0x58 => unimplemented!("Prefix opcode 0x58 is not yet implemented"),
+      0x58 => op_bit_test!(self, reg_b, 3),
       // 0x59 | BIT 3,C | 2 | 8 | Z 0 1 -
-      0x59 => unimplemented!("Prefix opcode 0x59 is not yet implemented"),
+      0x59 => op_bit_test!(self, reg_c, 3),
       // 0x5a | BIT 3,D | 2 | 8 | Z 0 1 -
-      0x5a => unimplemented!("Prefix opcode 0x5a is not yet implemented"),
+      0x5a => op_bit_test!(self, reg_d, 3),
       // 0x5b | BIT 3,E | 2 | 8 | Z 0 1 -
-      0x5b => unimplemented!("Prefix opcode 0x5b is not yet implemented"),
+      0x5b => op_bit_test!(self, reg_e, 3),
       // 0x5c | BIT 3,H | 2 | 8 | Z 0 1 -
-      0x5c => unimplemented!("Prefix opcode 0x5c is not yet implemented"),
+      0x5c => op_bit_test!(self, reg_h, 3),
       // 0x5d | BIT 3,L | 2 | 8 | Z 0 1 -
-      0x5d => unimplemented!("Prefix opcode 0x5d is not yet implemented"),
+      0x5d => op_bit_test!(self, reg_l, 3),
       // 0x5e | BIT 3,(HL) | 2 | 16 | Z 0 1 -
       0x5e => unimplemented!("Prefix opcode 0x5e is not yet implemented"),
       // 0x5f | BIT 3,A | 2 | 8 | Z 0 1 -
-      0x5f => unimplemented!("Prefix opcode 0x5f is not yet implemented"),
+      0x5f => op_bit_test!(self, reg_a, 3),
       // 0x60 | BIT 4,B | 2 | 8 | Z 0 1 -
-      0x60 => unimplemented!("Prefix opcode 0x60 is not yet implemented"),
+      0x60 => op_bit_test!(self, reg_b, 4),
       // 0x61 | BIT 4,C | 2 | 8 | Z 0 1 -
-      0x61 => unimplemented!("Prefix opcode 0x61 is not yet implemented"),
+      0x61 => op_bit_test!(self, reg_c, 4),
       // 0x62 | BIT 4,D | 2 | 8 | Z 0 1 -
-      0x62 => unimplemented!("Prefix opcode 0x62 is not yet implemented"),
+      0x62 => op_bit_test!(self, reg_d, 4),
       // 0x63 | BIT 4,E | 2 | 8 | Z 0 1 -
-      0x63 => unimplemented!("Prefix opcode 0x63 is not yet implemented"),
+      0x63 => op_bit_test!(self, reg_e, 4),
       // 0x64 | BIT 4,H | 2 | 8 | Z 0 1 -
-      0x64 => unimplemented!("Prefix opcode 0x64 is not yet implemented"),
+      0x64 => op_bit_test!(self, reg_h, 4),
       // 0x65 | BIT 4,L | 2 | 8 | Z 0 1 -
-      0x65 => unimplemented!("Prefix opcode 0x65 is not yet implemented"),
+      0x65 => op_bit_test!(self, reg_l, 4),
       // 0x66 | BIT 4,(HL) | 2 | 16 | Z 0 1 -
       0x66 => unimplemented!("Prefix opcode 0x66 is not yet implemented"),
       // 0x67 | BIT 4,A | 2 | 8 | Z 0 1 -
-      0x67 => unimplemented!("Prefix opcode 0x67 is not yet implemented"),
+      0x67 => op_bit_test!(self, reg_a, 4),
       // 0x68 | BIT 5,B | 2 | 8 | Z 0 1 -
-      0x68 => unimplemented!("Prefix opcode 0x68 is not yet implemented"),
+      0x68 => op_bit_test!(self, reg_b, 5),
       // 0x69 | BIT 5,C | 2 | 8 | Z 0 1 -
-      0x69 => unimplemented!("Prefix opcode 0x69 is not yet implemented"),
+      0x69 => op_bit_test!(self, reg_c, 5),
       // 0x6a | BIT 5,D | 2 | 8 | Z 0 1 -
-      0x6a => unimplemented!("Prefix opcode 0x6a is not yet implemented"),
+      0x6a => op_bit_test!(self, reg_d, 5),
       // 0x6b | BIT 5,E | 2 | 8 | Z 0 1 -
-      0x6b => unimplemented!("Prefix opcode 0x6b is not yet implemented"),
+      0x6b => op_bit_test!(self, reg_e, 5),
       // 0x6c | BIT 5,H | 2 | 8 | Z 0 1 -
-      0x6c => unimplemented!("Prefix opcode 0x6c is not yet implemented"),
+      0x6c => op_bit_test!(self, reg_h, 5),
       // 0x6d | BIT 5,L | 2 | 8 | Z 0 1 -
-      0x6d => unimplemented!("Prefix opcode 0x6d is not yet implemented"),
+      0x6d => op_bit_test!(self, reg_l, 5),
       // 0x6e | BIT 5,(HL) | 2 | 16 | Z 0 1 -
       0x6e => unimplemented!("Prefix opcode 0x6e is not yet implemented"),
       // 0x6f | BIT 5,A | 2 | 8 | Z 0 1 -
-      0x6f => unimplemented!("Prefix opcode 0x6f is not yet implemented"),
+      0x6f => op_bit_test!(self, reg_a, 5),
       // 0x70 | BIT 6,B | 2 | 8 | Z 0 1 -
-      0x70 => unimplemented!("Prefix opcode 0x70 is not yet implemented"),
+      0x70 => op_bit_test!(self, reg_b, 6),
       // 0x71 | BIT 6,C | 2 | 8 | Z 0 1 -
-      0x71 => unimplemented!("Prefix opcode 0x71 is not yet implemented"),
+      0x71 => op_bit_test!(self, reg_c, 6),
       // 0x72 | BIT 6,D | 2 | 8 | Z 0 1 -
-      0x72 => unimplemented!("Prefix opcode 0x72 is not yet implemented"),
+      0x72 => op_bit_test!(self, reg_d, 6),
       // 0x73 | BIT 6,E | 2 | 8 | Z 0 1 -
-      0x73 => unimplemented!("Prefix opcode 0x73 is not yet implemented"),
+      0x73 => op_bit_test!(self, reg_e, 6),
       // 0x74 | BIT 6,H | 2 | 8 | Z 0 1 -
-      0x74 => unimplemented!("Prefix opcode 0x74 is not yet implemented"),
+      0x74 => op_bit_test!(self, reg_h, 6),
       // 0x75 | BIT 6,L | 2 | 8 | Z 0 1 -
-      0x75 => unimplemented!("Prefix opcode 0x75 is not yet implemented"),
+      0x75 => op_bit_test!(self, reg_l, 6),
       // 0x76 | BIT 6,(HL) | 2 | 16 | Z 0 1 -
       0x76 => unimplemented!("Prefix opcode 0x76 is not yet implemented"),
       // 0x77 | BIT 6,A | 2 | 8 | Z 0 1 -
-      0x77 => unimplemented!("Prefix opcode 0x77 is not yet implemented"),
+      0x77 => op_bit_test!(self, reg_a, 6),
       // 0x78 | BIT 7,B | 2 | 8 | Z 0 1 -
-      0x78 => unimplemented!("Prefix opcode 0x78 is not yet implemented"),
+      0x78 => op_bit_test!(self, reg_b, 7),
       // 0x79 | BIT 7,C | 2 | 8 | Z 0 1 -
-      0x79 => unimplemented!("Prefix opcode 0x79 is not yet implemented"),
+      0x79 => op_bit_test!(self, reg_c, 7),
       // 0x7a | BIT 7,D | 2 | 8 | Z 0 1 -
-      0x7a => unimplemented!("Prefix opcode 0x7a is not yet implemented"),
+      0x7a => op_bit_test!(self, reg_d, 7),
       // 0x7b | BIT 7,E | 2 | 8 | Z 0 1 -
-      0x7b => unimplemented!("Prefix opcode 0x7b is not yet implemented"),
+      0x7b => op_bit_test!(self, reg_e, 7),
       // 0x7c | BIT 7,H | 2 | 8 | Z 0 1 -
-      0x7c => unimplemented!("Prefix opcode 0x7c is not yet implemented"),
+      0x7c => op_bit_test!(self, reg_h, 7),
       // 0x7d | BIT 7,L | 2 | 8 | Z 0 1 -
-      0x7d => unimplemented!("Prefix opcode 0x7d is not yet implemented"),
+      0x7d => op_bit_test!(self, reg_l, 7),
       // 0x7e | BIT 7,(HL) | 2 | 16 | Z 0 1 -
       0x7e => unimplemented!("Prefix opcode 0x7e is not yet implemented"),
       // 0x7f | BIT 7,A | 2 | 8 | Z 0 1 -
-      0x7f => unimplemented!("Prefix opcode 0x7f is not yet implemented"),
+      0x7f => op_bit_test!(self, reg_a, 7),
       // 0x80 | RES 0,B | 2 | 8 | - - - -
       0x80 => unimplemented!("Prefix opcode 0x80 is not yet implemented"),
       // 0x81 | RES 0,C | 2 | 8 | - - - -

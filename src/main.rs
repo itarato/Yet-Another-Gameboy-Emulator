@@ -13,9 +13,9 @@ pub mod util;
 use self::emu::*;
 
 fn main() {
-    env_logger::init();
+  env_logger::init();
 
-    info!("Emulator start");
+  info!("Emulator start");
 
-    Emu::new().run();
+  Emu::new().run();
 }

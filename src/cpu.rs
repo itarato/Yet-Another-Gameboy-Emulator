@@ -9,12 +9,15 @@ pub struct Cpu {
   pub reg_h: u8,
   pub reg_l: u8,
   pub sp: u16,
-  pc: u16,
+  pub pc: u16,
 }
 
 impl Cpu {
   pub fn new() -> Cpu {
-    Default::default()
+    Cpu {
+      sp: 0xfffe,
+      ..Default::default()
+    }
   }
 
   pub fn reset(&mut self) {}
@@ -34,4 +37,9 @@ impl Cpu {
     self.pc += 1;
     pc
   }
+
+  cpu_flag_fn! { flag_zero, set_flag_zero, reset_flag_zero, 7 }
+  cpu_flag_fn! { flag_add_sub, set_flag_add_sub, reset_flag_add_sub, 6 }
+  cpu_flag_fn! { flag_half_carry, set_flag_half_carry, reset_flag_half_carry, 5 }
+  cpu_flag_fn! { flag_carry, set_flag_carry, reset_flag_carry, 4 }
 }
