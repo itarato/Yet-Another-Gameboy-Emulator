@@ -57,7 +57,7 @@ macro_rules! hi {
 
 macro_rules! lo {
   ($dw:expr) => {{
-    ($dw | 0xff) as u8
+    ($dw & 0xff) as u8
   }};
 }
 
@@ -71,7 +71,7 @@ macro_rules! set_dword_register {
 }
 
 macro_rules! dec_dword_reg {
-  ($fname:ident, $reg_lo:ident, $reg_hi:ident) => (
+  ($fname:ident, $reg_hi:ident, $reg_lo:ident) => (
     pub fn $fname(&mut self) {
       let mut dw = dword!(self.$reg_hi, self.$reg_lo);
       dw = dw.wrapping_sub(1);

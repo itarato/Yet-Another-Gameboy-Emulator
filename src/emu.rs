@@ -115,6 +115,7 @@ impl Emu {
       DebuggerCommand::MemoryPrint(addr, len) => {
         self.mem_debug_print(addr, len);
       }
+      DebuggerCommand::CpuPrint => self.cpu.registers_debug_print(),
       DebuggerCommand::Breakpoint => { /* keep it stopped */ }
       _ => return,
     };

@@ -8,6 +8,7 @@ pub enum DebuggerCommand {
   Empty,
   Breakpoint,
   MemoryPrint(u16, usize),
+  CpuPrint,
   Quit,
 }
 
@@ -58,7 +59,7 @@ impl Debugger {
         let n = if parts.len() > 1 {
           usize::from_str_radix(parts[1], 10).unwrap()
         } else {
-          0
+          1
         };
         self.next_count = Some(n);
 
@@ -76,6 +77,7 @@ impl Debugger {
         let len = usize::from_str_radix(parts[2], 10).unwrap();
         DebuggerCommand::MemoryPrint(addr, len)
       }
+      "cpu" => DebuggerCommand::CpuPrint,
       "exit" | "e" | "quit" | "q" => DebuggerCommand::Quit,
       _ => {
         debug!("Unknown debugger command.");

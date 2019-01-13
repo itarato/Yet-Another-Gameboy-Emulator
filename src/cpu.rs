@@ -13,16 +13,26 @@ pub struct Cpu {
 }
 
 impl Cpu {
-  pub fn new() -> Cpu { Default::default() }
+  pub fn new() -> Cpu {
+    Default::default()
+  }
 
   pub fn reset(&mut self) {
     self.sp = 0xfffe;
   }
 
-  pub fn reg_af(&self) -> u16 { dword!(self.reg_a, self.reg_f) }
-  pub fn reg_bc(&self) -> u16 { dword!(self.reg_b, self.reg_c) }
-  pub fn reg_de(&self) -> u16 { dword!(self.reg_d, self.reg_e) }
-  pub fn reg_hl(&self) -> u16 { dword!(self.reg_h, self.reg_l) }
+  pub fn reg_af(&self) -> u16 {
+    dword!(self.reg_a, self.reg_f)
+  }
+  pub fn reg_bc(&self) -> u16 {
+    dword!(self.reg_b, self.reg_c)
+  }
+  pub fn reg_de(&self) -> u16 {
+    dword!(self.reg_d, self.reg_e)
+  }
+  pub fn reg_hl(&self) -> u16 {
+    dword!(self.reg_h, self.reg_l)
+  }
 
   set_dword_register! { set_af, reg_a, reg_f }
   set_dword_register! { set_bc, reg_b, reg_c }
@@ -43,5 +53,23 @@ impl Cpu {
     let pc = self.pc;
     self.pc += 1;
     pc
+  }
+
+  pub fn registers_debug_print(&self) {
+    println!("-----------------");
+    println!("[A: 0x{:>02x} F: 0x{:>02x}]", self.reg_a, self.reg_f);
+    println!("[B: 0x{:>02x} C: 0x{:>02x}]", self.reg_b, self.reg_c);
+    println!("[D: 0x{:>02x} E: 0x{:>02x}]", self.reg_d, self.reg_e);
+    println!("[H: 0x{:>02x} L: 0x{:>02x}]", self.reg_h, self.reg_l);
+    println!("[PC: 0x{:>04x}]", self.pc);
+    println!("[SP: 0x{:>04x}]", self.sp);
+    println!(
+      "[Z:{:?} N:{:?} H:{:?} C:{:?}]",
+      bitn!(self.reg_f, 7),
+      bitn!(self.reg_f, 6),
+      bitn!(self.reg_f, 5),
+      bitn!(self.reg_f, 4)
+    );
+    println!("-----------------");
   }
 }
