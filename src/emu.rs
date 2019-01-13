@@ -126,7 +126,11 @@ impl Emu {
   pub fn read_instruction(&mut self) {
     let opcode = self.read_opcode_word();
 
-    info!("Load opcode: 0x{:x} at PC: 0x{:x}", opcode, self.cpu.pc - 1);
+    info!(
+      "Load opcode: 0x{:>02x} at PC: 0x{:>04x}",
+      opcode,
+      self.cpu.pc - 1
+    );
 
     match opcode {
       // 0x00 | NOP | 1 | 4 | - - - -
@@ -533,7 +537,7 @@ impl Emu {
       // 0xc4 | CALL NZ,a16 | 3 | 24/12 | - - - -
       0xc4 => unimplemented!("Opcode 0xc4 is not yet implemented"),
       // 0xc5 | PUSH BC | 1 | 16 | - - - -
-      0xc5 => unimplemented!("Opcode 0xc5 is not yet implemented"),
+      0xc5 => self.push_dword(self.cpu.reg_bc()),
       // 0xc6 | ADD A,d8 | 2 | 8 | Z 0 H C
       0xc6 => unimplemented!("Opcode 0xc6 is not yet implemented"),
       // 0xc7 | RST 00H | 1 | 16 | - - - -
@@ -549,7 +553,10 @@ impl Emu {
       // 0xcc | CALL Z,a16 | 3 | 24/12 | - - - -
       0xcc => unimplemented!("Opcode 0xcc is not yet implemented"),
       // 0xcd | CALL a16 | 3 | 24 | - - - -
-      0xcd => unimplemented!("Opcode 0xcd is not yet implemented"),
+      0xcd => {
+        self.push_dword(self.cpu.pc);
+        self.cpu.pc = self.read_opcode_dword();
+      }
       // 0xce | ADC A,d8 | 2 | 8 | Z 0 H C
       0xce => unimplemented!("Opcode 0xce is not yet implemented"),
       // 0xcf | RST 08H | 1 | 16 | - - - -
@@ -563,7 +570,7 @@ impl Emu {
       // 0xd4 | CALL NC,a16 | 3 | 24/12 | - - - -
       0xd4 => unimplemented!("Opcode 0xd4 is not yet implemented"),
       // 0xd5 | PUSH DE | 1 | 16 | - - - -
-      0xd5 => unimplemented!("Opcode 0xd5 is not yet implemented"),
+      0xd5 => self.push_dword(self.cpu.reg_de()),
       // 0xd6 | SUB d8 | 2 | 8 | Z 1 H C
       0xd6 => unimplemented!("Opcode 0xd6 is not yet implemented"),
       // 0xd7 | RST 10H | 1 | 16 | - - - -
@@ -617,7 +624,7 @@ impl Emu {
       // 0xf3 | DI | 1 | 4 | - - - -
       0xf3 => unimplemented!("Opcode 0xf3 is not yet implemented"),
       // 0xf5 | PUSH AF | 1 | 16 | - - - -
-      0xf5 => unimplemented!("Opcode 0xf5 is not yet implemented"),
+      0xf5 => self.push_dword(self.cpu.reg_af()),
       // 0xf6 | OR d8 | 2 | 8 | Z 0 0 0
       0xf6 => unimplemented!("Opcode 0xf6 is not yet implemented"),
       // 0xf7 | RST 30H | 1 | 16 | - - - -
