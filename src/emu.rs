@@ -144,7 +144,7 @@ impl Emu {
       // 0x04 | INC B | 1 | 4 | Z 0 H -
       0x04 => unimplemented!("Opcode 0x04 is not yet implemented"),
       // 0x05 | DEC B | 1 | 4 | Z 1 H -
-      0x05 => unimplemented!("Opcode 0x05 is not yet implemented"),
+      0x05 => op_dec_reg!(self, reg_b),
       // 0x06 | LD B,d8 | 2 | 8 | - - - -
       0x06 => load_word_to_reg!(reg_b, self),
       // 0x07 | RLCA | 1 | 4 | 0 0 0 C
@@ -180,7 +180,16 @@ impl Emu {
       // 0x16 | LD D,d8 | 2 | 8 | - - - -
       0x16 => load_word_to_reg!(reg_d, self),
       // 0x17 | RLA | 1 | 4 | 0 0 0 C
-      0x17 => unimplemented!("Opcode 0x17 is not yet implemented"),
+      0x17 => {
+        let old_carry = if self.cpu.flag_carry() { 1 } else { 0 };
+        self.cpu.set_flag_carry(bitn!(self.cpu.reg_a, 0x7));
+
+        self.cpu.reg_a = (self.cpu.reg_a << 1) | old_carry;
+
+        self.cpu.reset_flag_zero();
+        self.cpu.reset_flag_add_sub();
+        self.cpu.reset_flag_half_carry();
+      }
       // 0x18 | JR r8 | 2 | 12 | - - - -
       0x18 => unimplemented!("Opcode 0x18 is not yet implemented"),
       // 0x19 | ADD HL,DE | 1 | 8 | - 0 H C
@@ -529,7 +538,10 @@ impl Emu {
       // 0xc0 | RET NZ | 1 | 20/8 | - - - -
       0xc0 => unimplemented!("Opcode 0xc0 is not yet implemented"),
       // 0xc1 | POP BC | 1 | 12 | - - - -
-      0xc1 => unimplemented!("Opcode 0xc1 is not yet implemented"),
+      0xc1 => {
+        let dw = self.pop_dword();
+        self.cpu.set_bc(dw);
+      }
       // 0xc2 | JP NZ,a16 | 3 | 16/12 | - - - -
       0xc2 => unimplemented!("Opcode 0xc2 is not yet implemented"),
       // 0xc3 | JP a16 | 3 | 16 | - - - -
@@ -649,6 +661,13 @@ impl Emu {
 
   fn read_prefix_instruction(&mut self) {
     let opcode = self.read_opcode_word();
+
+    info!(
+      "Load prefix opcode: 0x{:>02x} at PC: 0x{:>04x}",
+      opcode,
+      self.cpu.pc - 1
+    );
+
     match opcode {
       // 0x00 | RLC B | 2 | 8 | Z 0 0 C
       0x00 => unimplemented!("Prefix opcode 0x00 is not yet implemented"),
@@ -683,21 +702,21 @@ impl Emu {
       // 0x0f | RRC A | 2 | 8 | Z 0 0 C
       0x0f => unimplemented!("Prefix opcode 0x0f is not yet implemented"),
       // 0x10 | RL B | 2 | 8 | Z 0 0 C
-      0x10 => unimplemented!("Prefix opcode 0x10 is not yet implemented"),
+      0x10 => rot_left_reg!(self, reg_b),
       // 0x11 | RL C | 2 | 8 | Z 0 0 C
-      0x11 => unimplemented!("Prefix opcode 0x11 is not yet implemented"),
+      0x11 => rot_left_reg!(self, reg_c),
       // 0x12 | RL D | 2 | 8 | Z 0 0 C
-      0x12 => unimplemented!("Prefix opcode 0x12 is not yet implemented"),
+      0x12 => rot_left_reg!(self, reg_d),
       // 0x13 | RL E | 2 | 8 | Z 0 0 C
-      0x13 => unimplemented!("Prefix opcode 0x13 is not yet implemented"),
+      0x13 => rot_left_reg!(self, reg_e),
       // 0x14 | RL H | 2 | 8 | Z 0 0 C
-      0x14 => unimplemented!("Prefix opcode 0x14 is not yet implemented"),
+      0x14 => rot_left_reg!(self, reg_h),
       // 0x15 | RL L | 2 | 8 | Z 0 0 C
-      0x15 => unimplemented!("Prefix opcode 0x15 is not yet implemented"),
+      0x15 => rot_left_reg!(self, reg_l),
       // 0x16 | RL (HL) | 2 | 16 | Z 0 0 C
       0x16 => unimplemented!("Prefix opcode 0x16 is not yet implemented"),
       // 0x17 | RL A | 2 | 8 | Z 0 0 C
-      0x17 => unimplemented!("Prefix opcode 0x17 is not yet implemented"),
+      0x17 => rot_left_reg!(self, reg_a),
       // 0x18 | RR B | 2 | 8 | Z 0 0 C
       0x18 => unimplemented!("Prefix opcode 0x18 is not yet implemented"),
       // 0x19 | RR C | 2 | 8 | Z 0 0 C

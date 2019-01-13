@@ -130,3 +130,19 @@ macro_rules! op_inc_reg {
     $sel.cpu.reset_flag_add_sub();
   }};
 }
+
+macro_rules! rot_left_reg {
+  ($sel:ident, $reg:ident) => {{
+    let old_carry = if $sel.cpu.flag_carry() { 1 } else { 0 };
+    $sel.cpu.set_flag_carry(bitn!($sel.cpu.$reg, 0x7));
+
+    $sel.cpu.$reg = ($sel.cpu.$reg << 1) | old_carry;
+
+    if $sel.cpu.$reg == 0x0 {
+      $sel.cpu.set_flag_zero(0x1);
+    }
+
+    $sel.cpu.reset_flag_add_sub();
+    $sel.cpu.reset_flag_half_carry();
+  }};
+}
