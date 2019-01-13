@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::Read;
 
 use super::cpu::*;
+use super::debugger::*;
 use super::mem::*;
 
 use super::util::*;
@@ -68,10 +69,12 @@ const OPCODE_DUR_PREFIX: [u8; 256] = [
 
 #[derive(Default)]
 pub struct Emu {
-  cpu: Cpu,
-  mem: Mem,
+  pub cpu: Cpu,
+  pub mem: Mem,
   dmg_rom: Vec<u8>,
-  cycles: u64,
+  pub cycles: u64,
+  debugger: Option<Debugger>,
+  halted: bool,
 }
 
 impl Emu {
@@ -82,10 +85,41 @@ impl Emu {
     emu
   }
 
+  pub fn enable_debug_mode(&mut self) {
+    self.debugger = Some(Debugger::new());
+  }
+
   pub fn run(&mut self) {
     loop {
+      if let Some(debugger) = self.debugger.as_mut() {
+        let should_break = debugger.should_break(self.cpu.pc);
+        if should_break {
+          self.operate_debugger();
+        }
+      }
+
+      if self.halted {
+        return;
+      }
+
       self.read_instruction();
     }
+  }
+
+  fn operate_debugger(&mut self) {
+    match self.debugger.as_mut().unwrap().read_command() {
+      DebuggerCommand::Quit => {
+        self.halted = true;
+        return;
+      }
+      DebuggerCommand::MemoryPrint(addr, len) => {
+        self.mem_debug_print(addr, len);
+      }
+      DebuggerCommand::Breakpoint => { /* keep it stopped */ }
+      _ => return,
+    };
+
+    self.operate_debugger();
   }
 
   pub fn read_instruction(&mut self) {
@@ -546,7 +580,10 @@ impl Emu {
       // 0xdf | RST 18H | 1 | 16 | - - - -
       0xdf => unimplemented!("Opcode 0xdf is not yet implemented"),
       // 0xe0 | LDH (a8),A | 2 | 12 | - - - -
-      0xe0 => unimplemented!("Opcode 0xe0 is not yet implemented"),
+      0xe0 => {
+        let addr = 0xff00 | self.read_opcode_word() as u16;
+        self.write_word(addr, self.cpu.reg_a);
+      }
       // 0xe1 | POP HL | 1 | 12 | - - - -
       0xe1 => unimplemented!("Opcode 0xe1 is not yet implemented"),
       // 0xe2 | LD (C),A | 2 | 8 | - - - -
@@ -1124,7 +1161,8 @@ impl Emu {
   }
 
   fn read_word(&self, addr: u16) -> u8 {
-    if Util::in_range(0x0000, 0x8000, addr) {
+    debug!("Read word from: 0x{:x}", addr);
+    if Util::in_range(0x0000, self.dmg_rom.len() as u16, addr) {
       self.dmg_rom[addr as usize]
     } else {
       self.mem.read_word(addr)
@@ -1187,6 +1225,22 @@ impl Emu {
   fn reset(&mut self) {
     self.cpu.reset();
     self.mem.reset();
+  }
+
+  fn mem_debug_print(&self, addr: u16, len: usize) {
+    for offs in 0..len {
+      if offs % 8 == 0 {
+        print!("\n[0x{:>04x}] ", (addr + offs as u16));
+      }
+
+      if offs % 4 == 0 {
+        print!(" ");
+      }
+
+      print!("{:>02x} ", self.read_word(addr + offs as u16));
+    }
+
+    println!("");
   }
 }
 

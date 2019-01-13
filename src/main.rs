@@ -6,6 +6,7 @@ extern crate env_logger;
 pub mod macros;
 
 pub mod cpu;
+pub mod debugger;
 pub mod emu;
 pub mod mem;
 pub mod util;
@@ -17,5 +18,7 @@ fn main() {
 
   info!("Emulator start");
 
-  Emu::new().run();
+  let mut emu = Emu::new();
+  emu.enable_debug_mode();
+  emu.run();
 }
