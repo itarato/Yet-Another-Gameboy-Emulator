@@ -13,14 +13,16 @@ pub struct Cpu {
 }
 
 impl Cpu {
-  pub fn new() -> Cpu {
-    Cpu {
-      sp: 0xfffe,
-      ..Default::default()
-    }
+  pub fn new() -> Cpu { Default::default() }
+
+  pub fn reset(&mut self) {
+    self.sp = 0xfffe;
   }
 
-  pub fn reset(&mut self) {}
+  pub fn reg_af(&self) -> u16 { dword!(self.reg_a, self.reg_f) }
+  pub fn reg_bc(&self) -> u16 { dword!(self.reg_b, self.reg_c) }
+  pub fn reg_de(&self) -> u16 { dword!(self.reg_d, self.reg_e) }
+  pub fn reg_hl(&self) -> u16 { dword!(self.reg_h, self.reg_l) }
 
   set_dword_register! { set_af, reg_a, reg_f }
   set_dword_register! { set_bc, reg_b, reg_c }
@@ -32,14 +34,14 @@ impl Cpu {
   dec_dword_reg! { dec_de, reg_d, reg_e }
   dec_dword_reg! { dec_hl, reg_h, reg_l }
 
+  cpu_flag_fn! { flag_zero, set_flag_zero, reset_flag_zero, 7 }
+  cpu_flag_fn! { flag_add_sub, set_flag_add_sub, reset_flag_add_sub, 6 }
+  cpu_flag_fn! { flag_half_carry, set_flag_half_carry, reset_flag_half_carry, 5 }
+  cpu_flag_fn! { flag_carry, set_flag_carry, reset_flag_carry, 4 }
+
   pub fn pc_inc(&mut self) -> u16 {
     let pc = self.pc;
     self.pc += 1;
     pc
   }
-
-  cpu_flag_fn! { flag_zero, set_flag_zero, reset_flag_zero, 7 }
-  cpu_flag_fn! { flag_add_sub, set_flag_add_sub, reset_flag_add_sub, 6 }
-  cpu_flag_fn! { flag_half_carry, set_flag_half_carry, reset_flag_half_carry, 5 }
-  cpu_flag_fn! { flag_carry, set_flag_carry, reset_flag_carry, 4 }
 }

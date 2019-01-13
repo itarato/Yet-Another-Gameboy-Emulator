@@ -91,7 +91,7 @@ impl Emu {
   pub fn read_instruction(&mut self) {
     let opcode = self.read_opcode_word();
 
-    info!("Executing opcode: 0x{:x}", opcode);
+    info!("Load opcode: 0x{:x} at PC: 0x{:x}", opcode, self.cpu.pc - 1);
 
     match opcode {
       // 0x00 | NOP | 1 | 4 | - - - -
@@ -119,9 +119,9 @@ impl Emu {
       // 0x0b | DEC BC | 1 | 8 | - - - -
       0x0b => unimplemented!("Opcode 0x0b is not yet implemented"),
       // 0x0c | INC C | 1 | 4 | Z 0 H -
-      0x0c => unimplemented!("Opcode 0x0c is not yet implemented"),
+      0x0c => op_inc_reg!(self, reg_c),
       // 0x0d | DEC C | 1 | 4 | Z 1 H -
-      0x0d => unimplemented!("Opcode 0x0d is not yet implemented"),
+      0x0d => op_dec_reg!(self, reg_c),
       // 0x0e | LD C,d8 | 2 | 8 | - - - -
       0x0e => load_word_to_reg!(reg_c, self),
       // 0x0f | RRCA | 1 | 4 | 0 0 0 C
@@ -228,7 +228,7 @@ impl Emu {
       // 0x3d | DEC A | 1 | 4 | Z 1 H -
       0x3d => unimplemented!("Opcode 0x3d is not yet implemented"),
       // 0x3e | LD A,d8 | 2 | 8 | - - - -
-      0x3e => unimplemented!("Opcode 0x3e is not yet implemented"),
+      0x3e => load_word_to_reg!(reg_a, self),
       // 0x3f | CCF | 1 | 4 | - 0 0 C
       0x3f => unimplemented!("Opcode 0x3f is not yet implemented"),
       // 0x40 | LD B,B | 1 | 4 | - - - -
@@ -550,9 +550,12 @@ impl Emu {
       // 0xe1 | POP HL | 1 | 12 | - - - -
       0xe1 => unimplemented!("Opcode 0xe1 is not yet implemented"),
       // 0xe2 | LD (C),A | 2 | 8 | - - - -
-      0xe2 => unimplemented!("Opcode 0xe2 is not yet implemented"),
+      0xe2 => {
+        let addr = 0xff00 + self.cpu.reg_c as u16;
+        self.write_word(addr, self.cpu.reg_a);
+      }
       // 0xe5 | PUSH HL | 1 | 16 | - - - -
-      0xe5 => unimplemented!("Opcode 0xe5 is not yet implemented"),
+      0xe5 => self.push_dword(self.cpu.reg_hl()),
       // 0xe6 | AND d8 | 2 | 8 | Z 0 1 0
       0xe6 => unimplemented!("Opcode 0xe6 is not yet implemented"),
       // 0xe7 | RST 20H | 1 | 16 | - - - -
@@ -1129,7 +1132,11 @@ impl Emu {
   }
 
   fn write_word(&mut self, addr: u16, w: u8) {
-    if Util::in_range(0x8000, 0xa000, addr) {
+    if Util::in_range(0x8000, 0xa000, addr) || // video ram
+      Util::in_range(0xff00, 0xff4c, addr) || // i/o ports
+      Util::in_range(0xff80, 0xffff, addr)
+    // internal ram
+    {
       self.mem.write_word(addr, w);
     } else {
       unimplemented!(
@@ -1156,8 +1163,36 @@ impl Emu {
     let _ = rom_file.read_to_end(&mut self.dmg_rom).unwrap();
   }
 
+  pub fn push_word(&mut self, w: u8) {
+    self.write_word(self.cpu.sp, w);
+    self.cpu.sp -= 1;
+  }
+
+  pub fn push_dword(&mut self, dw: u16) {
+    self.push_word(dw.lo());
+    self.push_word(dw.hi());
+  }
+
+  pub fn pop_word(&mut self) -> u8 {
+    self.cpu.sp += 1;
+    self.read_word(self.cpu.sp)
+  }
+
+  pub fn pop_dword(&mut self) -> u16 {
+    let hi = self.pop_word();
+    let lo = self.pop_word();
+    dword!(hi, lo)
+  }
+
   fn reset(&mut self) {
     self.cpu.reset();
     self.mem.reset();
   }
+}
+
+#[test]
+fn test_stack() {
+  let mut emu = Emu::new();
+  emu.push_dword(0xabcd);
+  assert_eq!(0xabcd, emu.pop_dword());
 }

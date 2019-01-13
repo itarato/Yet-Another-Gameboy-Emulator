@@ -104,3 +104,29 @@ macro_rules! op_bit_test {
     $sel.cpu.set_flag_half_carry(0x1);
   }};
 }
+
+macro_rules! op_dec_reg {
+  ($sel:ident, $reg:ident) => {{
+    if !Util::has_half_borrow($sel.cpu.$reg, 0x1) {
+      $sel.cpu.set_flag_half_carry(0x1);
+    }
+    $sel.cpu.$reg = $sel.cpu.$reg.wrapping_sub(1);
+    if $sel.cpu.$reg == 0x0 {
+      $sel.cpu.set_flag_zero(0x1);
+    }
+    $sel.cpu.set_flag_add_sub(0x1);
+  }};
+}
+
+macro_rules! op_inc_reg {
+  ($sel:ident, $reg:ident) => {{
+    if Util::has_half_carry($sel.cpu.$reg, 0x1) {
+      $sel.cpu.set_flag_half_carry(0x1);
+    }
+    $sel.cpu.$reg = $sel.cpu.$reg.wrapping_add(1);
+    if $sel.cpu.$reg == 0x0 {
+      $sel.cpu.set_flag_zero(0x1);
+    }
+    $sel.cpu.reset_flag_add_sub();
+  }};
+}
