@@ -217,9 +217,12 @@ impl Emu {
       // 0x21 | LD HL,d16 | 3 | 12 | - - - -
       0x21 => load_dword_to_reg!(set_hl, self),
       // 0x22 | LD (HL+),A | 1 | 8 | - - - -
-      0x22 => unimplemented!("Opcode 0x22 is not yet implemented"),
+      0x22 => {
+        load_word_to_reg_addr_from_reg!(reg_h, reg_l, reg_a, self);
+        self.cpu.inc_hl();
+      }
       // 0x23 | INC HL | 1 | 8 | - - - -
-      0x23 => unimplemented!("Opcode 0x23 is not yet implemented"),
+      0x23 => self.cpu.inc_hl(),
       // 0x24 | INC H | 1 | 4 | Z 0 H -
       0x24 => unimplemented!("Opcode 0x24 is not yet implemented"),
       // 0x25 | DEC H | 1 | 4 | Z 1 H -
@@ -440,21 +443,36 @@ impl Emu {
       // 0x8f | ADC A,A | 1 | 4 | Z 0 H C
       0x8f => unimplemented!("Opcode 0x8f is not yet implemented"),
       // 0x90 | SUB B | 1 | 4 | Z 1 H C
-      0x90 => unimplemented!("Opcode 0x90 is not yet implemented"),
+      0x90 => op_sub_reg_from_a!(self, reg_b),
       // 0x91 | SUB C | 1 | 4 | Z 1 H C
-      0x91 => unimplemented!("Opcode 0x91 is not yet implemented"),
+      0x91 => op_sub_reg_from_a!(self, reg_c),
       // 0x92 | SUB D | 1 | 4 | Z 1 H C
-      0x92 => unimplemented!("Opcode 0x92 is not yet implemented"),
+      0x92 => op_sub_reg_from_a!(self, reg_d),
       // 0x93 | SUB E | 1 | 4 | Z 1 H C
-      0x93 => unimplemented!("Opcode 0x93 is not yet implemented"),
+      0x93 => op_sub_reg_from_a!(self, reg_e),
       // 0x94 | SUB H | 1 | 4 | Z 1 H C
-      0x94 => unimplemented!("Opcode 0x94 is not yet implemented"),
+      0x94 => op_sub_reg_from_a!(self, reg_h),
       // 0x95 | SUB L | 1 | 4 | Z 1 H C
-      0x95 => unimplemented!("Opcode 0x95 is not yet implemented"),
+      0x95 => op_sub_reg_from_a!(self, reg_l),
       // 0x96 | SUB (HL) | 1 | 8 | Z 1 H C
-      0x96 => unimplemented!("Opcode 0x96 is not yet implemented"),
+      0x96 => {
+        let acc = self.read_word(self.cpu.reg_hl());
+        if !Util::has_half_borrow(self.cpu.reg_a, acc) {
+          self.cpu.set_flag_half_carry(0x1);
+        }
+        if !Util::has_borrow(self.cpu.reg_a, acc) {
+          self.cpu.set_flag_carry(0x1);
+        }
+
+        self.cpu.reg_a = self.cpu.reg_a.wrapping_sub(acc);
+
+        if self.cpu.reg_a == 0x0 {
+          self.cpu.set_flag_zero(0x1);
+        }
+        self.cpu.set_flag_add_sub(0x1);
+      }
       // 0x97 | SUB A | 1 | 4 | Z 1 H C
-      0x97 => unimplemented!("Opcode 0x97 is not yet implemented"),
+      0x97 => op_sub_reg_from_a!(self, reg_a),
       // 0x98 | SBC A,B | 1 | 4 | Z 1 H C
       0x98 => unimplemented!("Opcode 0x98 is not yet implemented"),
       // 0x99 | SBC A,C | 1 | 4 | Z 1 H C
@@ -557,7 +575,7 @@ impl Emu {
       // 0xc8 | RET Z | 1 | 20/8 | - - - -
       0xc8 => unimplemented!("Opcode 0xc8 is not yet implemented"),
       // 0xc9 | RET | 1 | 16 | - - - -
-      0xc9 => unimplemented!("Opcode 0xc9 is not yet implemented"),
+      0xc9 => self.cpu.pc = self.pop_dword(),
       // 0xca | JP Z,a16 | 3 | 16/12 | - - - -
       0xca => unimplemented!("Opcode 0xca is not yet implemented"),
       // 0xcb | PREFIX CB | 1 | 4 | - - - -

@@ -12,6 +12,14 @@ impl Util {
   pub fn has_half_borrow(w: u8, acc: u8) -> bool {
     (w & 0xf) < (acc & 0xf)
   }
+
+  pub fn has_carry(w: u8, acc: u8) -> bool {
+    (w as u16) + (acc as u16) > 0xff
+  }
+
+  pub fn has_borrow(w: u8, acc: u8) -> bool {
+    w < acc
+  }
 }
 
 pub trait BitNumerics {

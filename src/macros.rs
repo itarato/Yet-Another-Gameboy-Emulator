@@ -81,6 +81,17 @@ macro_rules! dec_dword_reg {
   )
 }
 
+macro_rules! inc_dword_reg {
+  ($fname:ident, $reg_hi:ident, $reg_lo:ident) => (
+    pub fn $fname(&mut self) {
+      let mut dw = dword!(self.$reg_hi, self.$reg_lo);
+      dw = dw.wrapping_add(1);
+      self.$reg_hi = hi!(dw);
+      self.$reg_lo = lo!(dw);
+    }
+  )
+}
+
 macro_rules! bitn {
   ($val:expr, $n:expr) => {{
     ($val >> $n) & 0x1
@@ -144,5 +155,23 @@ macro_rules! rot_left_reg {
 
     $sel.cpu.reset_flag_add_sub();
     $sel.cpu.reset_flag_half_carry();
+  }};
+}
+
+macro_rules! op_sub_reg_from_a {
+  ($sel:ident, $reg:ident) => {{
+    if !Util::has_half_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
+      $sel.cpu.set_flag_half_carry(0x1);
+    }
+    if !Util::has_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
+      $sel.cpu.set_flag_carry(0x1);
+    }
+
+    $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_sub($sel.cpu.$reg);
+
+    if $sel.cpu.reg_a == 0x0 {
+      $sel.cpu.set_flag_zero(0x1);
+    }
+    $sel.cpu.set_flag_add_sub(0x1);
   }};
 }

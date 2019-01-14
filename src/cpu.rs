@@ -44,6 +44,11 @@ impl Cpu {
   dec_dword_reg! { dec_de, reg_d, reg_e }
   dec_dword_reg! { dec_hl, reg_h, reg_l }
 
+  inc_dword_reg! { inc_af, reg_a, reg_f }
+  inc_dword_reg! { inc_bc, reg_b, reg_c }
+  inc_dword_reg! { inc_de, reg_d, reg_e }
+  inc_dword_reg! { inc_hl, reg_h, reg_l }
+
   cpu_flag_fn! { flag_zero, set_flag_zero, reset_flag_zero, 7 }
   cpu_flag_fn! { flag_add_sub, set_flag_add_sub, reset_flag_add_sub, 6 }
   cpu_flag_fn! { flag_half_carry, set_flag_half_carry, reset_flag_half_carry, 5 }
