@@ -142,7 +142,7 @@ impl Emu {
       // 0x03 | INC BC | 1 | 8 | - - - -
       0x03 => unimplemented!("Opcode 0x03 is not yet implemented"),
       // 0x04 | INC B | 1 | 4 | Z 0 H -
-      0x04 => unimplemented!("Opcode 0x04 is not yet implemented"),
+      0x04 => op_inc_reg!(self, reg_b),
       // 0x05 | DEC B | 1 | 4 | Z 1 H -
       0x05 => op_dec_reg!(self, reg_b),
       // 0x06 | LD B,d8 | 2 | 8 | - - - -
@@ -172,11 +172,11 @@ impl Emu {
       // 0x12 | LD (DE),A | 1 | 8 | - - - -
       0x12 => unimplemented!("Opcode 0x12 is not yet implemented"),
       // 0x13 | INC DE | 1 | 8 | - - - -
-      0x13 => unimplemented!("Opcode 0x13 is not yet implemented"),
+      0x13 => self.cpu.inc_de(),
       // 0x14 | INC D | 1 | 4 | Z 0 H -
-      0x14 => unimplemented!("Opcode 0x14 is not yet implemented"),
+      0x14 => op_inc_reg!(self, reg_d),
       // 0x15 | DEC D | 1 | 4 | Z 1 H -
-      0x15 => unimplemented!("Opcode 0x15 is not yet implemented"),
+      0x15 => op_dec_reg!(self, reg_d),
       // 0x16 | LD D,d8 | 2 | 8 | - - - -
       0x16 => load_word_to_reg!(reg_d, self),
       // 0x17 | RLA | 1 | 4 | 0 0 0 C
@@ -199,9 +199,9 @@ impl Emu {
       // 0x1b | DEC DE | 1 | 8 | - - - -
       0x1b => unimplemented!("Opcode 0x1b is not yet implemented"),
       // 0x1c | INC E | 1 | 4 | Z 0 H -
-      0x1c => unimplemented!("Opcode 0x1c is not yet implemented"),
+      0x1c => op_inc_reg!(self, reg_e),
       // 0x1d | DEC E | 1 | 4 | Z 1 H -
-      0x1d => unimplemented!("Opcode 0x1d is not yet implemented"),
+      0x1d => op_dec_reg!(self, reg_e),
       // 0x1e | LD E,d8 | 2 | 8 | - - - -
       0x1e => load_word_to_reg!(reg_e, self),
       // 0x1f | RRA | 1 | 4 | 0 0 0 C
@@ -224,9 +224,9 @@ impl Emu {
       // 0x23 | INC HL | 1 | 8 | - - - -
       0x23 => self.cpu.inc_hl(),
       // 0x24 | INC H | 1 | 4 | Z 0 H -
-      0x24 => unimplemented!("Opcode 0x24 is not yet implemented"),
+      0x24 => op_inc_reg!(self, reg_h),
       // 0x25 | DEC H | 1 | 4 | Z 1 H -
-      0x25 => unimplemented!("Opcode 0x25 is not yet implemented"),
+      0x25 => op_dec_reg!(self, reg_h),
       // 0x26 | LD H,d8 | 2 | 8 | - - - -
       0x26 => load_word_to_reg!(reg_h, self),
       // 0x27 | DAA | 1 | 4 | Z - 0 C
@@ -240,9 +240,9 @@ impl Emu {
       // 0x2b | DEC HL | 1 | 8 | - - - -
       0x2b => unimplemented!("Opcode 0x2b is not yet implemented"),
       // 0x2c | INC L | 1 | 4 | Z 0 H -
-      0x2c => unimplemented!("Opcode 0x2c is not yet implemented"),
+      0x2c => op_inc_reg!(self, reg_l),
       // 0x2d | DEC L | 1 | 4 | Z 1 H -
-      0x2d => unimplemented!("Opcode 0x2d is not yet implemented"),
+      0x2d => op_dec_reg!(self, reg_l),
       // 0x2e | LD L,d8 | 2 | 8 | - - - -
       0x2e => load_word_to_reg!(reg_l, self),
       // 0x2f | CPL | 1 | 4 | - 1 1 -
@@ -275,9 +275,9 @@ impl Emu {
       // 0x3b | DEC SP | 1 | 8 | - - - -
       0x3b => unimplemented!("Opcode 0x3b is not yet implemented"),
       // 0x3c | INC A | 1 | 4 | Z 0 H -
-      0x3c => unimplemented!("Opcode 0x3c is not yet implemented"),
+      0x3c => op_inc_reg!(self, reg_a),
       // 0x3d | DEC A | 1 | 4 | Z 1 H -
-      0x3d => unimplemented!("Opcode 0x3d is not yet implemented"),
+      0x3d => op_dec_reg!(self, reg_a),
       // 0x3e | LD A,d8 | 2 | 8 | - - - -
       0x3e => load_word_to_reg!(reg_a, self),
       // 0x3f | CCF | 1 | 4 | - 0 0 C
@@ -640,7 +640,10 @@ impl Emu {
       // 0xe9 | JP (HL) | 1 | 4 | - - - -
       0xe9 => unimplemented!("Opcode 0xe9 is not yet implemented"),
       // 0xea | LD (a16),A | 3 | 16 | - - - -
-      0xea => unimplemented!("Opcode 0xea is not yet implemented"),
+      0xea => {
+        let addr = self.read_opcode_dword();
+        self.write_word(addr, self.cpu.reg_a);
+      }
       // 0xee | XOR d8 | 2 | 8 | Z 0 0 0
       0xee => unimplemented!("Opcode 0xee is not yet implemented"),
       // 0xef | RST 28H | 1 | 16 | - - - -
@@ -668,7 +671,20 @@ impl Emu {
       // 0xfb | EI | 1 | 4 | - - - -
       0xfb => unimplemented!("Opcode 0xfb is not yet implemented"),
       // 0xfe | CP d8 | 2 | 8 | Z 1 H C
-      0xfe => unimplemented!("Opcode 0xfe is not yet implemented"),
+      0xfe => {
+        let acc = self.read_opcode_word();
+        if !Util::has_half_borrow(self.cpu.reg_a, acc) {
+          self.cpu.set_flag_half_carry(0x1);
+        }
+        if !Util::has_borrow(self.cpu.reg_a, acc) {
+          self.cpu.set_flag_carry(0x1);
+        }
+
+        if self.cpu.reg_a == acc {
+          self.cpu.set_flag_zero(0x1);
+        }
+        self.cpu.set_flag_add_sub(0x1);
+      }
       // 0xff | RST 38H | 1 | 16 | - - - -
       0xff => unimplemented!("Opcode 0xff is not yet implemented"),
       opcode @ _ => panic!("Unexpected opcode: {:?}", opcode),

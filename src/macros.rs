@@ -175,3 +175,19 @@ macro_rules! op_sub_reg_from_a {
     $sel.cpu.set_flag_add_sub(0x1);
   }};
 }
+
+macro_rules! op_cp_with_a {
+  ($sel:ident, $reg:ident) => {{
+    if !Util::has_half_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
+      $sel.cpu.set_flag_half_carry(0x1);
+    }
+    if !Util::has_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
+      $sel.cpu.set_flag_carry(0x1);
+    }
+
+    if $sel.cpu.reg_a == $sel.cpu.$reg {
+      $sel.cpu.set_flag_zero(0x1);
+    }
+    $sel.cpu.set_flag_add_sub(0x1);
+  }};
+}
