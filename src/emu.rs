@@ -75,6 +75,7 @@ pub struct Emu {
   pub cycles: u64,
   debugger: Option<Debugger>,
   halted: bool,
+  rom: Vec<u8>,
 }
 
 impl Emu {
@@ -82,6 +83,7 @@ impl Emu {
     let mut emu: Emu = Default::default();
     emu.reset();
     emu.read_dmg_rom();
+    emu.read_rom();
     emu
   }
 
@@ -125,6 +127,7 @@ impl Emu {
 
   pub fn read_instruction(&mut self) {
     let opcode = self.read_opcode_word();
+    let mut is_cycle_alternative = false;
 
     info!(
       "Load opcode: 0x{:>02x} at PC: 0x{:>04x}",
@@ -191,7 +194,10 @@ impl Emu {
         self.cpu.reset_flag_half_carry();
       }
       // 0x18 | JR r8 | 2 | 12 | - - - -
-      0x18 => unimplemented!("Opcode 0x18 is not yet implemented"),
+      0x18 => {
+        let addr = Util::dword_signed_add(self.cpu.pc, self.read_opcode_word() as i8);
+        self.cpu.pc = addr;
+      }
       // 0x19 | ADD HL,DE | 1 | 8 | - 0 H C
       0x19 => unimplemented!("Opcode 0x19 is not yet implemented"),
       // 0x1a | LD A,(DE) | 1 | 8 | - - - -
@@ -210,8 +216,9 @@ impl Emu {
       0x20 => {
         let offs = self.read_opcode_word() as i8;
         if !self.cpu.flag_zero() {
-          self.cycles += OPCODE_DUR_ALTERNATIVE[opcode as usize] as u64;
           self.cpu.pc = (self.cpu.pc as i32 + offs as i32) as u16;
+        } else {
+          is_cycle_alternative = true;
         }
       }
       // 0x21 | LD HL,d16 | 3 | 12 | - - - -
@@ -232,7 +239,13 @@ impl Emu {
       // 0x27 | DAA | 1 | 4 | Z - 0 C
       0x27 => unimplemented!("Opcode 0x27 is not yet implemented"),
       // 0x28 | JR Z,r8 | 2 | 12/8 | - - - -
-      0x28 => unimplemented!("Opcode 0x28 is not yet implemented"),
+      0x28 => {
+        if self.cpu.flag_zero() {
+          self.cpu.pc += self.read_opcode_word() as u16;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0x29 | ADD HL,HL | 1 | 8 | - 0 H C
       0x29 => unimplemented!("Opcode 0x29 is not yet implemented"),
       // 0x2a | LD A,(HL+) | 1 | 8 | - - - -
@@ -466,9 +479,7 @@ impl Emu {
 
         self.cpu.reg_a = self.cpu.reg_a.wrapping_sub(acc);
 
-        if self.cpu.reg_a == 0x0 {
-          self.cpu.set_flag_zero(0x1);
-        }
+        self.cpu.set_flag_zero_for(self.cpu.reg_a);
         self.cpu.set_flag_add_sub(0x1);
       }
       // 0x97 | SUB A | 1 | 4 | Z 1 H C
@@ -649,7 +660,10 @@ impl Emu {
       // 0xef | RST 28H | 1 | 16 | - - - -
       0xef => unimplemented!("Opcode 0xef is not yet implemented"),
       // 0xf0 | LDH A,(a8) | 2 | 12 | - - - -
-      0xf0 => unimplemented!("Opcode 0xf0 is not yet implemented"),
+      0xf0 => {
+        let addr = 0xff00 | self.read_opcode_word() as u16;
+        self.write_word(addr, self.cpu.reg_a);
+      }
       // 0xf1 | POP AF | 1 | 12 | Z N H C
       0xf1 => unimplemented!("Opcode 0xf1 is not yet implemented"),
       // 0xf2 | LD A,(C) | 2 | 8 | - - - -
@@ -680,9 +694,9 @@ impl Emu {
           self.cpu.set_flag_carry(0x1);
         }
 
-        if self.cpu.reg_a == acc {
-          self.cpu.set_flag_zero(0x1);
-        }
+        self
+          .cpu
+          .set_flag_zero(if self.cpu.reg_a == acc { 0x1 } else { 0x0 });
         self.cpu.set_flag_add_sub(0x1);
       }
       // 0xff | RST 38H | 1 | 16 | - - - -
@@ -690,7 +704,11 @@ impl Emu {
       opcode @ _ => panic!("Unexpected opcode: {:?}", opcode),
     };
 
-    self.cycles += OPCODE_DUR[opcode as usize] as u64;
+    if is_cycle_alternative {
+      self.cycles += OPCODE_DUR_ALTERNATIVE[opcode as usize] as u64;
+    } else {
+      self.cycles += OPCODE_DUR[opcode as usize] as u64;
+    }
   }
 
   fn read_prefix_instruction(&mut self) {
@@ -1223,8 +1241,10 @@ impl Emu {
 
   fn read_word(&self, addr: u16) -> u8 {
     debug!("Read word from: 0x{:x}", addr);
-    if Util::in_range(0x0000, self.dmg_rom.len() as u16, addr) {
+    if Util::in_range(0x0000, 0x0100, addr) {
       self.dmg_rom[addr as usize]
+    } else if Util::in_range(0x0100, 0x8000, addr) {
+      self.rom[addr as usize]
     } else {
       self.mem.read_word(addr)
     }
@@ -1232,7 +1252,7 @@ impl Emu {
 
   fn write_word(&mut self, addr: u16, w: u8) {
     if Util::in_range(0x8000, 0xa000, addr) || // video ram
-      Util::in_range(0xff00, 0xff4c, addr) || // i/o ports
+      Util::in_range(0xff00, 0xff4c, addr) || // i/o ports ---> THIS NEEDS SPECIAL CARE
       Util::in_range(0xff80, 0xffff, addr)
     // internal ram
     {
@@ -1260,6 +1280,11 @@ impl Emu {
   fn read_dmg_rom(&mut self) {
     let mut rom_file = File::open("asset/dmg_rom.bin").unwrap();
     let _ = rom_file.read_to_end(&mut self.dmg_rom).unwrap();
+  }
+
+  fn read_rom(&mut self) {
+    let mut rom_file = File::open("asset/tetris.gb").unwrap();
+    let _ = rom_file.read_to_end(&mut self.rom).unwrap();
   }
 
   pub fn push_word(&mut self, w: u8) {

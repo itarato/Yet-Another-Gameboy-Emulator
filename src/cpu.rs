@@ -1,3 +1,5 @@
+use super::util::*;
+
 #[derive(Default)]
 pub struct Cpu {
   pub reg_a: u8,
@@ -53,6 +55,10 @@ impl Cpu {
   cpu_flag_fn! { flag_add_sub, set_flag_add_sub, reset_flag_add_sub, 6 }
   cpu_flag_fn! { flag_half_carry, set_flag_half_carry, reset_flag_half_carry, 5 }
   cpu_flag_fn! { flag_carry, set_flag_carry, reset_flag_carry, 4 }
+
+  pub fn set_flag_zero_for(&mut self, w: u8) {
+    self.set_flag_zero(if w == 0 { 0x1 } else { 0x0 });
+  }
 
   pub fn pc_inc(&mut self) -> u16 {
     let pc = self.pc;
