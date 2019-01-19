@@ -5,7 +5,7 @@ use std::io::{self, Write};
 pub enum DebuggerCommand {
   Next,
   Continue,
-  Empty,
+  Invalid,
   Breakpoint,
   MemoryPrint(u16, usize),
   CpuPrint,
@@ -72,6 +72,12 @@ impl Debugger {
           .insert(u16::from_str_radix(parts[1], 16).unwrap());
         DebuggerCommand::Breakpoint
       }
+      "-breakpoint" | "-break" | "-b" => {
+        self
+          .breakpoints
+          .remove(&u16::from_str_radix(parts[1], 16).unwrap());
+        DebuggerCommand::Breakpoint
+      }
       "memory" | "mem" | "m" => {
         let addr = u16::from_str_radix(parts[1], 16).unwrap();
         let len = usize::from_str_radix(parts[2], 10).unwrap();
@@ -79,9 +85,10 @@ impl Debugger {
       }
       "cpu" => DebuggerCommand::CpuPrint,
       "exit" | "e" | "quit" | "q" => DebuggerCommand::Quit,
-      _ => {
+      cmd @ _ => {
         debug!("Unknown debugger command.");
-        DebuggerCommand::Empty
+        println!("Unrecognized debugger command: {:#?}", cmd);
+        DebuggerCommand::Invalid
       }
     }
   }

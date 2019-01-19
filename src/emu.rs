@@ -119,7 +119,8 @@ impl Emu {
       }
       DebuggerCommand::CpuPrint => self.cpu.registers_debug_print(),
       DebuggerCommand::Breakpoint => { /* keep it stopped */ }
-      _ => return,
+      DebuggerCommand::Continue | DebuggerCommand::Next => return,
+      _ => {}
     };
 
     self.operate_debugger();
@@ -195,7 +196,8 @@ impl Emu {
       }
       // 0x18 | JR r8 | 2 | 12 | - - - -
       0x18 => {
-        let addr = Util::dword_signed_add(self.cpu.pc, self.read_opcode_word() as i8);
+        let offs = self.read_opcode_word();
+        let addr = Util::dword_signed_add(self.cpu.pc, offs as i8);
         self.cpu.pc = addr;
       }
       // 0x19 | ADD HL,DE | 1 | 8 | - 0 H C
@@ -240,8 +242,9 @@ impl Emu {
       0x27 => unimplemented!("Opcode 0x27 is not yet implemented"),
       // 0x28 | JR Z,r8 | 2 | 12/8 | - - - -
       0x28 => {
+        let offs = self.read_opcode_word();
         if self.cpu.flag_zero() {
-          self.cpu.pc += self.read_opcode_word() as u16;
+          self.cpu.pc += offs as u16;
         } else {
           is_cycle_alternative = true;
         }
@@ -595,8 +598,9 @@ impl Emu {
       0xcc => unimplemented!("Opcode 0xcc is not yet implemented"),
       // 0xcd | CALL a16 | 3 | 24 | - - - -
       0xcd => {
+        let addr = self.read_opcode_dword();
         self.push_dword(self.cpu.pc);
-        self.cpu.pc = self.read_opcode_dword();
+        self.cpu.pc = addr;
       }
       // 0xce | ADC A,d8 | 2 | 8 | Z 0 H C
       0xce => unimplemented!("Opcode 0xce is not yet implemented"),
@@ -1311,6 +1315,46 @@ impl Emu {
   fn reset(&mut self) {
     self.cpu.reset();
     self.mem.reset();
+  }
+
+  fn interrupt_enable_v_blank(&self) -> bool {
+    bitn!(self.read_word(0xffff), 0) == 0x1
+  }
+
+  fn interrupt_enable_lcd_stat(&self) -> bool {
+    bitn!(self.read_word(0xffff), 1) == 0x1
+  }
+
+  fn interrupt_enable_timer(&self) -> bool {
+    bitn!(self.read_word(0xffff), 2) == 0x1
+  }
+
+  fn interrupt_enable_serial(&self) -> bool {
+    bitn!(self.read_word(0xffff), 3) == 0x1
+  }
+
+  fn interrupt_enable_joypad(&self) -> bool {
+    bitn!(self.read_word(0xffff), 4) == 0x1
+  }
+
+  fn interrupt_flag_v_blank(&self) -> bool {
+    bitn!(self.read_word(0xff0f), 0) == 0x1
+  }
+
+  fn interrupt_flag_lcd_stat(&self) -> bool {
+    bitn!(self.read_word(0xff0f), 1) == 0x1
+  }
+
+  fn interrupt_flag_timer(&self) -> bool {
+    bitn!(self.read_word(0xff0f), 2) == 0x1
+  }
+
+  fn interrupt_flag_serial(&self) -> bool {
+    bitn!(self.read_word(0xff0f), 3) == 0x1
+  }
+
+  fn interrupt_flag_joypad(&self) -> bool {
+    bitn!(self.read_word(0xff0f), 4) == 0x1
   }
 
   fn mem_debug_print(&self, addr: u16, len: usize) {
