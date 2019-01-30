@@ -63,6 +63,11 @@ impl Cpu {
   pub fn pc_inc(&mut self) -> u16 {
     let pc = self.pc;
     self.pc += 1;
+
+    if self.pc >= 0x4000 {
+      unimplemented!("PC is out of standard rom bank space: 0x{:>04x}", self.pc);
+    }
+
     pc
   }
 

@@ -4,6 +4,7 @@ use std::io::Read;
 use super::cpu::*;
 use super::debugger::*;
 use super::mem::*;
+use super::sound::*;
 
 use super::util::*;
 
@@ -71,11 +72,13 @@ const OPCODE_DUR_PREFIX: [u8; 256] = [
 pub struct Emu {
   pub cpu: Cpu,
   pub mem: Mem,
+  pub sound: Sound,
   dmg_rom: Vec<u8>,
   pub cycles: u64,
   debugger: Option<Debugger>,
   halted: bool,
   rom: Vec<u8>,
+  interrupts_enabled: bool,
 }
 
 impl Emu {
@@ -105,6 +108,7 @@ impl Emu {
       }
 
       self.read_instruction();
+      self.handle_interrupts();
     }
   }
 
@@ -124,6 +128,40 @@ impl Emu {
     };
 
     self.operate_debugger();
+  }
+
+  fn handle_interrupts(&mut self) {
+    if !self.interrupts_enabled {
+      return;
+    }
+
+    info!("Interrupt check.");
+
+    if self.interrupt_enabled_v_blank() && self.interrupt_flag_v_blank() {
+      // Disable interrupts.
+      self.interrupts_enabled = false;
+
+      // Disable specific interrupt request.
+      let flag_off = Util::setbit(self.read_word(0xff0f), 0, 0x0);
+      self.write_word(0xff0f, flag_off);
+      self.cycles += 2;
+
+      // Save current PC.
+      self.push_dword(self.cpu.pc);
+      self.cycles += 2;
+
+      // Jump to interrupt instruction.
+      self.cpu.pc = 0x40;
+      self.cycles += 1;
+    } else if self.interrupt_enabled_lcd_stat() {
+      unimplemented!("<lcd_stat> interrupt has not been implemented.");
+    } else if self.interrupt_enabled_timer() {
+      unimplemented!("<timer> interrupt has not been implemented.");
+    } else if self.interrupt_enabled_serial() {
+      unimplemented!("<serial> interrupt has not been implemented.");
+    } else if self.interrupt_enabled_joypad() {
+      unimplemented!("<joypad> interrupt has not been implemented.");
+    }
   }
 
   pub fn read_instruction(&mut self) {
@@ -1245,10 +1283,12 @@ impl Emu {
 
   fn read_word(&self, addr: u16) -> u8 {
     debug!("Read word from: 0x{:x}", addr);
-    if Util::in_range(0x0000, 0x0100, addr) {
-      self.dmg_rom[addr as usize]
-    } else if Util::in_range(0x0100, 0x8000, addr) {
-      self.rom[addr as usize]
+    if Util::in_range(0x0000, 0x8000, addr) {
+      if self.has_cartrige() {
+        self.rom[addr as usize]
+      } else {
+        self.dmg_rom[addr as usize]
+      }
     } else {
       self.mem.read_word(addr)
     }
@@ -1256,11 +1296,15 @@ impl Emu {
 
   fn write_word(&mut self, addr: u16, w: u8) {
     if Util::in_range(0x8000, 0xa000, addr) || // video ram
-      Util::in_range(0xff00, 0xff4c, addr) || // i/o ports ---> THIS NEEDS SPECIAL CARE
       Util::in_range(0xff80, 0xffff, addr)
     // internal ram
     {
       self.mem.write_word(addr, w);
+    } else if Util::in_range(0xff00, 0xff80, addr) {
+      // i/o ports ---> THIS NEEDS SPECIAL CARE
+      match addr {
+        _ => unimplemented!("Unimplemented IO port: 0x{:>02x}", addr),
+      };
     } else {
       unimplemented!(
         "Write on unknown address: 0x{:x} the value: 0x{:x}",
@@ -1315,25 +1359,27 @@ impl Emu {
   fn reset(&mut self) {
     self.cpu.reset();
     self.mem.reset();
+    self.sound.reset();
+    self.interrupts_enabled = false;
   }
 
-  fn interrupt_enable_v_blank(&self) -> bool {
+  fn interrupt_enabled_v_blank(&self) -> bool {
     bitn!(self.read_word(0xffff), 0) == 0x1
   }
 
-  fn interrupt_enable_lcd_stat(&self) -> bool {
+  fn interrupt_enabled_lcd_stat(&self) -> bool {
     bitn!(self.read_word(0xffff), 1) == 0x1
   }
 
-  fn interrupt_enable_timer(&self) -> bool {
+  fn interrupt_enabled_timer(&self) -> bool {
     bitn!(self.read_word(0xffff), 2) == 0x1
   }
 
-  fn interrupt_enable_serial(&self) -> bool {
+  fn interrupt_enabled_serial(&self) -> bool {
     bitn!(self.read_word(0xffff), 3) == 0x1
   }
 
-  fn interrupt_enable_joypad(&self) -> bool {
+  fn interrupt_enabled_joypad(&self) -> bool {
     bitn!(self.read_word(0xffff), 4) == 0x1
   }
 
@@ -1371,6 +1417,11 @@ impl Emu {
     }
 
     println!("");
+  }
+
+  fn has_cartrige(&self) -> bool {
+    // TODO add mechanism to check.
+    false
   }
 }
 

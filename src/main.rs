@@ -9,6 +9,7 @@ pub mod cpu;
 pub mod debugger;
 pub mod emu;
 pub mod mem;
+pub mod sound;
 pub mod util;
 
 use self::emu::*;
