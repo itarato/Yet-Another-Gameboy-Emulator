@@ -1303,6 +1303,7 @@ impl Emu {
     } else if Util::in_range(0xff00, 0xff80, addr) {
       // i/o ports ---> THIS NEEDS SPECIAL CARE
       match addr {
+        0xff10...0xff3f => self.sound.write_word(addr, w),
         _ => unimplemented!("Unimplemented IO port: 0x{:>02x}", addr),
       };
     } else {
