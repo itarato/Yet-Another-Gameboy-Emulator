@@ -8,6 +8,7 @@ pub mod macros;
 pub mod cpu;
 pub mod debugger;
 pub mod emu;
+pub mod graphics;
 pub mod mem;
 pub mod sound;
 pub mod util;

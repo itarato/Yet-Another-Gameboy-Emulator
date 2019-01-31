@@ -3,6 +3,7 @@ use std::io::Read;
 
 use super::cpu::*;
 use super::debugger::*;
+use super::graphics::*;
 use super::mem::*;
 use super::sound::*;
 
@@ -73,6 +74,7 @@ pub struct Emu {
   pub cpu: Cpu,
   pub mem: Mem,
   pub sound: Sound,
+  pub graphics: Graphics,
   dmg_rom: Vec<u8>,
   pub cycles: u64,
   debugger: Option<Debugger>,
@@ -1287,7 +1289,12 @@ impl Emu {
       if self.has_cartrige() {
         self.rom[addr as usize]
       } else {
-        self.dmg_rom[addr as usize]
+        if Util::in_range(0x0000, 0x0100, addr) {
+          self.dmg_rom[addr as usize]
+        } else {
+          // TODO This is only because we need the Nintendo logo from 0x0104 - be careful not sure if correct.
+          self.rom[addr as usize]
+        }
       }
     } else {
       self.mem.read_word(addr)
@@ -1304,6 +1311,8 @@ impl Emu {
       // i/o ports ---> THIS NEEDS SPECIAL CARE
       match addr {
         0xff10...0xff3f => self.sound.write_word(addr, w),
+        0xff42 => self.graphics.write_word(addr, w),
+        0xff47 => self.graphics.write_word(addr, w),
         _ => unimplemented!("Unimplemented IO port: 0x{:>02x}", addr),
       };
     } else {
@@ -1361,6 +1370,7 @@ impl Emu {
     self.cpu.reset();
     self.mem.reset();
     self.sound.reset();
+    self.graphics.reset();
     self.interrupts_enabled = false;
   }
 
