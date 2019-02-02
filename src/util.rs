@@ -36,6 +36,16 @@ impl Util {
       dword.wrapping_sub(sw.abs() as u16)
     }
   }
+
+  pub fn did_tick_happened(cycles_pre: u64, cycles_current: u64, hz: u64) -> bool {
+    assert!(cycles_pre < cycles_current);
+
+    let machine_cycles = hz / 4;
+    let div_pre = cycles_pre / machine_cycles;
+    let div_post = cycles_current / machine_cycles;
+
+    div_pre != div_post
+  }
 }
 
 pub trait BitNumerics {

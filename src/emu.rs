@@ -6,7 +6,7 @@ use super::debugger::*;
 use super::graphics::*;
 use super::mem::*;
 use super::sound::*;
-
+use super::timer::*;
 use super::util::*;
 
 #[rustfmt::skip]
@@ -75,6 +75,7 @@ pub struct Emu {
   pub mem: Mem,
   pub sound: Sound,
   pub graphics: Graphics,
+  pub timer: Timer,
   dmg_rom: Vec<u8>,
   pub cycles: u64,
   debugger: Option<Debugger>,
@@ -109,7 +110,10 @@ impl Emu {
         return;
       }
 
+      let cycles_prev = self.cycles;
       self.read_instruction();
+      self.handle_timer(cycles_prev);
+      self.handle_video_interrupt(cycles_prev);
       self.handle_interrupts();
     }
   }
@@ -126,6 +130,7 @@ impl Emu {
       DebuggerCommand::CpuPrint => self.cpu.registers_debug_print(),
       DebuggerCommand::Breakpoint => { /* keep it stopped */ }
       DebuggerCommand::Continue | DebuggerCommand::Next => return,
+      DebuggerCommand::Display => self.graphics.draw_display(),
       _ => {}
     };
 
@@ -155,6 +160,7 @@ impl Emu {
       // Jump to interrupt instruction.
       self.cpu.pc = 0x40;
       self.cycles += 1;
+    // TODO These cycle advances needs to be considered for tick detection!!! -> Maybe not needed.
     } else if self.interrupt_enabled_lcd_stat() {
       unimplemented!("<lcd_stat> interrupt has not been implemented.");
     } else if self.interrupt_enabled_timer() {
@@ -163,6 +169,23 @@ impl Emu {
       unimplemented!("<serial> interrupt has not been implemented.");
     } else if self.interrupt_enabled_joypad() {
       unimplemented!("<joypad> interrupt has not been implemented.");
+    }
+  }
+
+  fn handle_timer(&mut self, cycles_prev: u64) {
+    let timer_result = self.timer.update(cycles_prev, self.cycles);
+
+    if timer_result.interrupt_generated {
+      let new_interrupts = Util::setbit(self.read_word(0xff0f), 2, 0x1);
+      self.write_word(0xff0f, new_interrupts)
+    }
+  }
+
+  fn handle_video_interrupt(&mut self, cycles_prev: u64) {
+    // 17564.08710217755 = 1048576 / 59.7
+    if Util::did_tick_happened(cycles_prev, self.cycles, 17564) {
+      let interrupt_new = Util::setbit(self.read_word(0xff0f), 0, 0x1);
+      self.write_word(0xff0f, interrupt_new);
     }
   }
 
@@ -1310,7 +1333,9 @@ impl Emu {
     } else if Util::in_range(0xff00, 0xff80, addr) {
       // i/o ports ---> THIS NEEDS SPECIAL CARE
       match addr {
+        0xff0f => self.mem.write_word(addr, w),
         0xff10...0xff3f => self.sound.write_word(addr, w),
+        0xff40 => self.graphics.write_word(addr, w),
         0xff42 => self.graphics.write_word(addr, w),
         0xff47 => self.graphics.write_word(addr, w),
         _ => unimplemented!("Unimplemented IO port: 0x{:>02x}", addr),
@@ -1371,6 +1396,7 @@ impl Emu {
     self.mem.reset();
     self.sound.reset();
     self.graphics.reset();
+    self.timer.reset();
     self.interrupts_enabled = false;
   }
 

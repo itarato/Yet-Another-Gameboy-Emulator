@@ -10,6 +10,7 @@ pub enum DebuggerCommand {
   MemoryPrint(u16, usize),
   CpuPrint,
   Quit,
+  Display,
 }
 
 #[derive(Default)]
@@ -84,6 +85,7 @@ impl Debugger {
         DebuggerCommand::MemoryPrint(addr, len)
       }
       "cpu" => DebuggerCommand::CpuPrint,
+      "display" | "d" => DebuggerCommand::Display,
       "exit" | "e" | "quit" | "q" => DebuggerCommand::Quit,
       cmd @ _ => {
         debug!("Unknown debugger command.");
