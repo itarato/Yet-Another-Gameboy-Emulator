@@ -1337,6 +1337,7 @@ impl Emu {
         0xff10...0xff3f => self.sound.write_word(addr, w),
         0xff40 => self.graphics.write_word(addr, w),
         0xff42 => self.graphics.write_word(addr, w),
+        0xff44 => self.graphics.write_word(addr, w),
         0xff47 => self.graphics.write_word(addr, w),
         _ => unimplemented!("Unimplemented IO port: 0x{:>02x}", addr),
       };
