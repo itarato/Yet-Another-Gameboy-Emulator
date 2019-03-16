@@ -77,11 +77,12 @@ pub struct Emu {
   pub graphics: Graphics,
   pub timer: Timer,
   dmg_rom: Vec<u8>,
-  pub cycles: u64,
+  pub cycles: u64, // = m-cycle (= 1/4 tstate / 1/4 clock)
   debugger: Option<Debugger>,
   halted: bool,
   rom: Vec<u8>,
   interrupts_enabled: bool,
+  internal_rom_disabled: bool,
 }
 
 impl Emu {
@@ -98,6 +99,7 @@ impl Emu {
   }
 
   pub fn run(&mut self) {
+    let mut cycles_prev = 0u64;
     loop {
       if let Some(debugger) = self.debugger.as_mut() {
         let should_break = debugger.should_break(self.cpu.pc);
@@ -110,11 +112,12 @@ impl Emu {
         return;
       }
 
-      let cycles_prev = self.cycles;
       self.read_instruction();
       self.handle_timer(cycles_prev);
-      self.handle_video_interrupt(cycles_prev);
+      self.handle_graphics(cycles_prev);
       self.handle_interrupts();
+
+      cycles_prev = self.cycles;
     }
   }
 
@@ -181,12 +184,8 @@ impl Emu {
     }
   }
 
-  fn handle_video_interrupt(&mut self, cycles_prev: u64) {
-    // 17564.08710217755 = 1048576 / 59.7
-    if Util::did_tick_happened(cycles_prev, self.cycles, 17564) {
-      let interrupt_new = Util::setbit(self.read_word(0xff0f), 0, 0x1);
-      self.write_word(0xff0f, interrupt_new);
-    }
+  fn handle_graphics(&mut self, cycles_prev: u64) {
+    self.graphics.update(cycles_prev, self.cycles);
   }
 
   pub fn read_instruction(&mut self) {
@@ -1309,7 +1308,7 @@ impl Emu {
   fn read_word(&self, addr: u16) -> u8 {
     debug!("Read word from: 0x{:x}", addr);
     if Util::in_range(0x0000, 0x8000, addr) {
-      if self.has_cartrige() {
+      if Util::in_range(0x0000, 0x0100, addr) && !self.internal_rom_disabled {
         self.rom[addr as usize]
       } else {
         if Util::in_range(0x0000, 0x0100, addr) {
@@ -1325,8 +1324,11 @@ impl Emu {
   }
 
   fn write_word(&mut self, addr: u16, w: u8) {
-    if Util::in_range(0x8000, 0xa000, addr) || // video ram
-      Util::in_range(0xff80, 0xffff, addr)
+    if Util::in_range(0x8000, 0xa000, addr)
+    // video ram
+    {
+      self.graphics.write_word(addr, w);
+    } else if Util::in_range(0xff80, 0xffff, addr)
     // internal ram
     {
       self.mem.write_word(addr, w);
@@ -1393,6 +1395,8 @@ impl Emu {
   }
 
   fn reset(&mut self) {
+    self.internal_rom_disabled = true;
+
     self.cpu.reset();
     self.mem.reset();
     self.sound.reset();
@@ -1455,11 +1459,6 @@ impl Emu {
     }
 
     println!("");
-  }
-
-  fn has_cartrige(&self) -> bool {
-    // TODO add mechanism to check.
-    false
   }
 }
 
