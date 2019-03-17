@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+extern crate sdl2;
 
 #[macro_use]
 pub mod macros;
@@ -23,6 +24,6 @@ fn main() {
   info!("Emulator start");
 
   let mut emu = Emu::new();
-  emu.enable_debug_mode();
+  // emu.enable_debug_mode();
   emu.run();
 }

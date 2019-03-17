@@ -9,6 +9,8 @@ use super::sound::*;
 use super::timer::*;
 use super::util::*;
 
+use sdl2::Sdl;
+
 #[rustfmt::skip]
 const OPCODE_DUR: [u8; 256] = [
    4, 12,  8,  8,  4,  4,  8,  4, 20,  8,  8,  8,  4,  4,  8,  4, 
@@ -69,7 +71,6 @@ const OPCODE_DUR_PREFIX: [u8; 256] = [
   8,  8,  8,  8,  8,  8, 16,  8,  8,  8,  8,  8,  8,  8, 16,  8,
 ];
 
-#[derive(Default)]
 pub struct Emu {
   pub cpu: Cpu,
   pub mem: Mem,
@@ -83,11 +84,35 @@ pub struct Emu {
   rom: Vec<u8>,
   interrupts_enabled: bool,
   internal_rom_disabled: bool,
+  sdl: Sdl,
 }
 
 impl Emu {
   pub fn new() -> Emu {
-    let mut emu: Emu = Default::default();
+    let sdl = sdl2::init().unwrap();
+    let video_subsystem = sdl.video().unwrap();
+    let window = video_subsystem
+      .window("Y.A.G.B.E.", 640, 576)
+      .opengl()
+      .build()
+      .unwrap();
+
+    let mut emu: Emu = Emu {
+      cpu: Cpu::default(),
+      mem: Mem::default(),
+      sound: Sound::default(),
+      graphics: Graphics::new(window.into_canvas().build().unwrap()),
+      timer: Timer::default(),
+      dmg_rom: Vec::new(),
+      cycles: 0u64,
+      debugger: None,
+      halted: false,
+      rom: Vec::new(),
+      interrupts_enabled: false,
+      internal_rom_disabled: false,
+      sdl: sdl,
+    };
+
     emu.reset();
     emu.read_dmg_rom();
     emu.read_rom();
@@ -116,6 +141,7 @@ impl Emu {
       self.handle_timer(cycles_prev);
       self.handle_graphics(cycles_prev);
       self.handle_interrupts();
+      self.handle_input_check();
 
       cycles_prev = self.cycles;
     }
@@ -186,6 +212,16 @@ impl Emu {
 
   fn handle_graphics(&mut self, cycles_prev: u64) {
     self.graphics.update(cycles_prev, self.cycles);
+  }
+
+  fn handle_input_check(&mut self) {
+    for event in self.sdl.event_pump().unwrap().poll_iter() {
+      match event {
+        sdl2::event::Event::Quit { .. } => self.halted = true,
+        // @TODO Implement key listening.
+        _ => {}
+      }
+    }
   }
 
   pub fn read_instruction(&mut self) {
@@ -1318,6 +1354,8 @@ impl Emu {
           self.rom[addr as usize]
         }
       }
+    } else if Util::in_range(0xfe00, 0xfea0, addr) || Util::in_range(0x8000, 0xa000, addr) {
+      self.graphics.read_word(addr)
     } else {
       self.mem.read_word(addr)
     }
@@ -1341,7 +1379,7 @@ impl Emu {
         0xff42 => self.graphics.write_word(addr, w),
         0xff44 => self.graphics.write_word(addr, w),
         0xff47 => self.graphics.write_word(addr, w),
-        _ => unimplemented!("Unimplemented IO port: 0x{:>02x}", addr),
+        _ => unimplemented!("Unimplemented IO port: 0x{:>04x}", addr),
       };
     } else {
       unimplemented!(

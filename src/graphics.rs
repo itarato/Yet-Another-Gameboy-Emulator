@@ -1,4 +1,7 @@
 use super::display_adapter::*;
+use super::util::*;
+use sdl2::pixels::Color;
+use sdl2::render::WindowCanvas;
 
 enum WindowTileMapDisplayRegion {
   Region_0x9800_0x9BFF,
@@ -30,12 +33,16 @@ pub struct Graphics {
   line: u8,
   stat: u8,
   vmem: [u8; 0x2000],
+  oam: [u8; 0xa0],
+  canvas: WindowCanvas,
+  backstage: [u8; 0x100 * 0x100],
 }
 
-impl Default for Graphics {
-  fn default() -> Graphics {
+impl Graphics {
+  pub fn new(canvas: WindowCanvas) -> Graphics {
     Graphics {
       vmem: [0; 0x2000],
+      oam: [0; 0xa0],
       lcdc: 0,
       scy: 0,
       bgp: 0,
@@ -44,18 +51,35 @@ impl Default for Graphics {
       mode_timer: 0,
       line: 0,
       stat: 0,
+      canvas,
+      backstage: [0; 0x100 * 0x100],
     }
   }
-}
 
-impl Graphics {
-  pub fn reset(&mut self) {}
+  pub fn reset(&mut self) {
+    self.canvas.set_draw_color(Color::RGB(0, 0, 0));
+    self.canvas.clear();
+    self.canvas.present();
+  }
 
   pub fn write_word(&mut self, addr: u16, w: u8) {
+    let stat_mode = self.stat_mode();
+    assert!(stat_mode <= 0b11);
+
     match addr {
       0x8000...0x9fff => {
-        if !self.is_vmem_used() {
+        if stat_mode != 0b11 {
           self.vmem[(addr - 0x8000) as usize] = w;
+        } else {
+          debug!("VMEM write is ignored.");
+        }
+      }
+      0xfe00...0xfe9f => {
+        // Sprite attribute table (OAM).
+        if stat_mode == 0b00 || stat_mode == 0b01 {
+          self.oam[addr as usize - 0xfe00] = w;
+        } else {
+          debug!("OAM write is ignored.");
         }
       }
       0xff40 => self.set_lcdc(w),
@@ -66,9 +90,28 @@ impl Graphics {
     };
   }
 
-  fn is_vmem_used(&self) -> bool {
-    // TODO Implement
-    false
+  pub fn read_word(&self, addr: u16) -> u8 {
+    let stat_mode = self.stat_mode();
+    assert!(stat_mode <= 0b11);
+
+    if Util::in_range(0xfe00, 0xfea0, addr) {
+      // Sprite attribute table (OAM).
+      if stat_mode != 0b00 && stat_mode != 0b01 {
+        debug!("OAM read is ignored.");
+        0xff
+      } else {
+        self.oam[addr as usize - 0xfe00]
+      }
+    } else if Util::in_range(0x8000, 0xa000, addr) {
+      if stat_mode == 0b11 {
+        debug!("VMEM read is ignored.");
+        0xff
+      } else {
+        self.vmem[addr as usize - 0x8000]
+      }
+    } else {
+      unimplemented!("Unrecognized video address: 0x{:>04x}", addr);
+    }
   }
 
   pub fn update(&mut self, cycles_prev: u64, cycles: u64) {
@@ -89,6 +132,8 @@ impl Graphics {
         // TODO  mode 3 about 170-240 tstates depending on where exactly the sprites, window, and fine scroll (SCX modulo 8) are positioned
         // !!! Draw should happen here !!!
         if self.mode_timer >= 688 {
+          // HERE DRAW LINE <self.line> from backstage.
+
           self.mode_timer = self.mode_timer % 688;
           self.set_stat_mode(0b00);
         }
@@ -118,6 +163,10 @@ impl Graphics {
       }
       mode @ _ => panic!("Illegal LCDC mode: 0b{:b}", mode),
     }
+  }
+
+  fn print_to_display(&mut self) {
+    self.clear_backstage();
   }
 
   fn stat_mode(&self) -> u8 {
@@ -195,5 +244,9 @@ impl Graphics {
 
   pub fn draw_display(&self) {
     self.display.draw();
+  }
+
+  fn clear_backstage(&mut self) {
+    self.backstage = [0; 256 * 256];
   }
 }

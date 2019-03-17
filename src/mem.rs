@@ -15,10 +15,7 @@ impl Mem {
   }
 
   pub fn write_word(&mut self, addr: u16, w: u8) {
-    if Util::in_range(0x8000, 0xa000, addr)
-      || Util::in_range(0xff00, 0xff4c, addr)
-      || Util::in_range(0xff80, 0xffff, addr)
-    {
+    if Util::in_range(0xff00, 0xff4c, addr) || Util::in_range(0xff80, 0xffff, addr) {
       self.mem[addr as usize] = w;
     } else if Util::in_range(0xe000, 0xfe00, addr) {
       self.mem[addr as usize] = w;
@@ -31,7 +28,9 @@ impl Mem {
     }
   }
 
-  pub fn read_word(&self, addr: u16) -> u8 { self.mem[addr as usize] }
+  pub fn read_word(&self, addr: u16) -> u8 {
+    self.mem[addr as usize]
+  }
 }
 
 #[test]
