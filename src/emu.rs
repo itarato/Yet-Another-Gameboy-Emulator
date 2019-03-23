@@ -83,6 +83,7 @@ pub struct Emu {
   halted: bool,
   rom: Vec<u8>,
   interrupts_enabled: bool,
+  interrupts_enabled_new_value: bool,
   internal_rom_disabled: bool,
   sdl: Sdl,
 }
@@ -109,6 +110,7 @@ impl Emu {
       halted: false,
       rom: Vec::new(),
       interrupts_enabled: false,
+      interrupts_enabled_new_value: false,
       internal_rom_disabled: false,
       sdl: sdl,
     };
@@ -137,6 +139,7 @@ impl Emu {
         return;
       }
 
+      self.interrupts_enabled_new_value = self.interrupts_enabled;
       self.read_instruction();
       self.handle_timer(cycles_prev);
       self.handle_graphics(cycles_prev);
@@ -144,6 +147,7 @@ impl Emu {
       self.handle_input_check();
 
       cycles_prev = self.cycles;
+      self.interrupts_enabled = self.interrupts_enabled_new_value;
     }
   }
 
@@ -675,7 +679,10 @@ impl Emu {
       // 0xc2 | JP NZ,a16 | 3 | 16/12 | - - - -
       0xc2 => unimplemented!("Opcode 0xc2 is not yet implemented"),
       // 0xc3 | JP a16 | 3 | 16 | - - - -
-      0xc3 => unimplemented!("Opcode 0xc3 is not yet implemented"),
+      0xc3 => {
+        let addr = self.read_opcode_dword();
+        self.cpu.pc = addr;
+      }
       // 0xc4 | CALL NZ,a16 | 3 | 24/12 | - - - -
       0xc4 => unimplemented!("Opcode 0xc4 is not yet implemented"),
       // 0xc5 | PUSH BC | 1 | 16 | - - - -
@@ -771,7 +778,7 @@ impl Emu {
       // 0xf2 | LD A,(C) | 2 | 8 | - - - -
       0xf2 => unimplemented!("Opcode 0xf2 is not yet implemented"),
       // 0xf3 | DI | 1 | 4 | - - - -
-      0xf3 => unimplemented!("Opcode 0xf3 is not yet implemented"),
+      0xf3 => self.interrupts_enabled_new_value = false,
       // 0xf5 | PUSH AF | 1 | 16 | - - - -
       0xf5 => self.push_dword(self.cpu.reg_af()),
       // 0xf6 | OR d8 | 2 | 8 | Z 0 0 0
@@ -785,7 +792,7 @@ impl Emu {
       // 0xfa | LD A,(a16) | 3 | 16 | - - - -
       0xfa => unimplemented!("Opcode 0xfa is not yet implemented"),
       // 0xfb | EI | 1 | 4 | - - - -
-      0xfb => unimplemented!("Opcode 0xfb is not yet implemented"),
+      0xfb => self.interrupts_enabled_new_value = true,
       // 0xfe | CP d8 | 2 | 8 | Z 1 H C
       0xfe => {
         let acc = self.read_opcode_word();
@@ -1364,28 +1371,31 @@ impl Emu {
   }
 
   fn write_word(&mut self, addr: u16, w: u8) {
-    if Util::in_range(0x8000, 0xa000, addr)
-    // video ram
-    {
-      self.graphics.write_word(addr, w);
-    } else if Util::in_range(0xff80, 0xffff, addr)
-    // internal ram
-    {
-      self.mem.write_word(addr, w);
-    } else if Util::in_range(0xff00, 0xff80, addr) {
-      // i/o ports ---> THIS NEEDS SPECIAL CARE
-      match addr {
-        0xff0f => self.mem.write_word(addr, w),
-        0xff10...0xff3f => self.sound.write_word(addr, w),
-        0xff40...0xff6b => self.graphics.write_word(addr, w),
-        _ => unimplemented!("Unimplemented IO port: 0x{:>04x}", addr),
-      };
-    } else {
-      unimplemented!(
-        "Write on unknown address: 0x{:x} the value: 0x{:x}",
-        addr,
-        w
-      );
+    match addr {
+      0x8000...0x9fff => {
+        // Video ram
+        self.graphics.write_word(addr, w);
+      }
+      0xff80...0xffff => {
+        // Internal ram
+        self.mem.write_word(addr, w);
+      }
+      0xff00...0xff7f => {
+        // i/o ports ---> THIS NEEDS SPECIAL CARE
+        match addr {
+          0xff0f => self.mem.write_word(addr, w),
+          0xff10...0xff3f => self.sound.write_word(addr, w),
+          0xff40...0xff6b => self.graphics.write_word(addr, w),
+          _ => unimplemented!("Unimplemented IO port: 0x{:>04x}", addr),
+        };
+      }
+      _ => {
+        unimplemented!(
+          "Write on unknown address: 0x{:x} the value: 0x{:x}",
+          addr,
+          w
+        );
+      }
     }
   }
 

@@ -115,7 +115,9 @@ impl Graphics {
         }
       }
       0xff40 => self.set_lcdc(w),
+      0xff41 => self.stat = (self.stat & 0b111) | (w & 0b1111_1000),
       0xff42 => self.scy = w,
+      0xff43 => self.scx = w,
       0xff44 => self.ly_lcdc_y_coordinate = 0x0,
       0xff47 => self.bgp = w,
       _ => unimplemented!("Unknown graphics address: 0x{:>04x}", addr),
@@ -145,7 +147,9 @@ impl Graphics {
         }
       }
       0xff40 => self.lcdc,
+      0xff41 => self.stat,
       0xff42 => self.scy,
+      0xff43 => self.scx,
       0xff44 => self.ly_lcdc_y_coordinate,
       0xff47 => self.bgp,
       _ => unimplemented!("Unrecognized video address: 0x{:>04x}", addr),
@@ -207,7 +211,7 @@ impl Graphics {
   }
 
   fn draw_hline(&mut self, line: u8) {
-    dbg!(self.scy);
+    // dbg!(self.scy);
 
     if line == 0 {
       self.canvas.set_draw_color(GdbColor::C0.as_sdl_color());
