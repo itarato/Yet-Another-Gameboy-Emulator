@@ -36,10 +36,10 @@ enum GdbColor {
 impl GdbColor {
   fn as_sdl_color(&self) -> Color {
     match self {
-      GdbColor::C0 => Color::RGB(0, 0, 0),
-      GdbColor::C1 => Color::RGB(85, 85, 85),
-      GdbColor::C2 => Color::RGB(170, 170, 170),
-      GdbColor::C3 => Color::RGB(255, 255, 255),
+      GdbColor::C3 => Color::RGB(0, 0, 0),
+      GdbColor::C2 => Color::RGB(85, 85, 85),
+      GdbColor::C1 => Color::RGB(170, 170, 170),
+      GdbColor::C0 => Color::RGB(255, 255, 255),
     }
   }
 }
@@ -141,7 +141,7 @@ impl Graphics {
       }
       0xff40 => self.set_lcdc(w),
       0xff41 => self.stat = (self.stat & 0b111) | (w & 0b1111_1000),
-      0xff42 => self.scy = w,
+      0xff42 => self.scy = 0,
       0xff43 => self.scx = w,
       0xff44 => self.ly_lcdc_y_coordinate = 0x0,
       0xff47 => self.bgp = w,
@@ -240,57 +240,46 @@ impl Graphics {
   }
 
   fn draw_hline(&mut self, line: u8) {
-    // dbg!(self.scy);
-
-    // if line == 0 {
-    //   self.canvas.set_draw_color(GdbColor::C0.as_sdl_color());
-    //   self.canvas.clear();
-    //   self.canvas.present();
-    // }
-
     for i in 0..160 {
       self.clear_pixel(Point::new(i, line as usize));
     }
 
     // Background.
-    for row in 0..32 {
-      for col in 0..32 {
-        let orig_x = col * 8;
-        let orig_y = row * 8;
-        let virt_x: i32 = (orig_x as i32 + 256 - self.scx as i32) % 256;
-        let virt_y: i32 = (orig_y as i32 + 256 - self.scy as i32) % 256;
+    let row = ((line as i32 + self.scy as i32) % 256) / 8;
+    let tile_line: i32 = (line as i32 + self.scy as i32) % 8;
 
-        let tile_line: i32 = line as i32 - virt_y;
+    for col in 0..32 {
+      let orig_x = col * 8;
+      let virt_x: i32 = (orig_x as i32 + 256 - self.scx as i32) % 256;
 
-        // The tile line would not be presented on the visible line scan.
-        if tile_line < 0 || tile_line >= 8 || virt_x >= 160 {
+      // The tile line would not be presented on the visible line scan.
+      if virt_x >= 160 {
+        continue;
+      }
+
+      let tile_idx = row as usize * 32 + col;
+      let tile_offs: usize = match self.background_tile_map_display_select() {
+        BackgroundTileMapDisplayRegion::Region_0x9800_0x9BFF => 0x9800 + tile_idx - 0x8000,
+        BackgroundTileMapDisplayRegion::Region_0x9C00_0x9FFF => 0x9c00 + tile_idx - 0x8000,
+      };
+      let map_region_start: usize = match self.background_and_window_tile_data_select() {
+        BackgroundAndWindowTileDataRegion::Region_0x8000_0x8FFF => 0x8000 - 0x8000,
+        BackgroundAndWindowTileDataRegion::Region_0x8800_0x97FF => 0x8800 - 0x8000,
+      };
+      let tile_block_size = 0x10;
+      let tile_addr: usize = map_region_start + (self.vmem[tile_offs] as usize * tile_block_size);
+
+      for i in 0..8 {
+        // Out of screen.
+        if virt_x + i >= 160 {
           continue;
         }
 
-        let tile_idx = row * 32 + col;
-        let tile_offs: usize = match self.background_tile_map_display_select() {
-          BackgroundTileMapDisplayRegion::Region_0x9800_0x9BFF => 0x9800 + tile_idx - 0x8000,
-          BackgroundTileMapDisplayRegion::Region_0x9C00_0x9FFF => 0x9c00 + tile_idx - 0x8000,
-        };
-        let map_region_start: usize = match self.background_and_window_tile_data_select() {
-          BackgroundAndWindowTileDataRegion::Region_0x8000_0x8FFF => 0x8000 - 0x8000,
-          BackgroundAndWindowTileDataRegion::Region_0x8800_0x97FF => 0x8800 - 0x8000,
-        };
-        let tile_block_size = 0x10;
-        let tile_addr: usize = map_region_start + (self.vmem[tile_offs] * tile_block_size) as usize;
-
-        for i in 0..8 {
-          // Out of screen.
-          if virt_x + i >= 160 {
-            continue;
-          }
-
-          let color_bit_hi = (self.vmem[tile_addr + (line as usize * 2)] >> (7 - i)) & 1;
-          let color_bit_lo = (self.vmem[tile_addr + (line as usize * 2) + 1] >> (7 - i)) & 1;
-          let color_code = (color_bit_hi << 1) | color_bit_lo;
-          let color = self.color_bit_to_color(color_code);
-          self.set_pixel(color, Point::new((virt_x + i) as usize, line as usize));
-        }
+        let color_bit_hi = (self.vmem[tile_addr + (tile_line as usize * 2)] >> (7 - i)) & 1;
+        let color_bit_lo = (self.vmem[tile_addr + (tile_line as usize * 2) + 1] >> (7 - i)) & 1;
+        let color_code = (color_bit_hi << 1) | color_bit_lo;
+        let color = self.color_bit_to_color(color_code);
+        self.set_pixel(color, Point::new((virt_x + i) as usize, line as usize));
       }
     }
 
@@ -303,11 +292,12 @@ impl Graphics {
 
     // Background.
     for row in 0..32 {
+      let orig_y = row * 8;
+
       for col in 0..32 {
         let orig_x = col * 8;
-        let orig_y = row * 8;
-
         let tile_idx = row * 32 + col;
+
         let tile_offs: usize = match self.background_tile_map_display_select() {
           BackgroundTileMapDisplayRegion::Region_0x9800_0x9BFF => 0x9800 + tile_idx - 0x8000,
           BackgroundTileMapDisplayRegion::Region_0x9C00_0x9FFF => 0x9c00 + tile_idx - 0x8000,
