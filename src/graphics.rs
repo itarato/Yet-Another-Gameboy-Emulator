@@ -3,6 +3,8 @@ use super::util::*;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
+use sdl2::Sdl;
+use std::rc::Rc;
 
 enum WindowTileMapDisplayRegion {
   Region_0x9800_0x9BFF,
@@ -67,10 +69,32 @@ pub struct Graphics {
   vmem: [u8; 0x2000],
   oam: [u8; 0xa0],
   canvas: WindowCanvas,
+  bg_debug_canvas: WindowCanvas,
 }
 
 impl Graphics {
-  pub fn new(canvas: WindowCanvas) -> Graphics {
+  pub fn new(sdl: Rc<Sdl>) -> Graphics {
+    let video_subsystem = sdl.video().unwrap();
+    let window = video_subsystem
+      .window(
+        "Y.A.G.B.E.",
+        160 * Graphics::scale() as u32,
+        144 * Graphics::scale() as u32,
+      )
+      .opengl()
+      .build()
+      .unwrap();
+
+    let debug_window = video_subsystem
+      .window(
+        "Y.A.G.B.E. BACKGROUND DEBUG",
+        256 * Graphics::scale() as u32,
+        256 * Graphics::scale() as u32,
+      )
+      .opengl()
+      .build()
+      .unwrap();
+
     Graphics {
       vmem: [0; 0x2000],
       oam: [0; 0xa0],
@@ -83,7 +107,8 @@ impl Graphics {
       mode_timer: 0,
       line: 0,
       stat: 0,
-      canvas,
+      canvas: window.into_canvas().build().unwrap(),
+      bg_debug_canvas: debug_window.into_canvas().build().unwrap(),
     }
   }
 
@@ -177,6 +202,10 @@ impl Graphics {
           // HERE DRAW LINE <self.line> from backstage.
           self.draw_hline(self.line);
 
+          if self.line == 0 {
+            self.update_debug_background_window();
+          }
+
           self.mode_timer = self.mode_timer % 688;
           self.set_stat_mode(0b00);
         }
@@ -213,11 +242,11 @@ impl Graphics {
   fn draw_hline(&mut self, line: u8) {
     // dbg!(self.scy);
 
-    if line == 0 {
-      self.canvas.set_draw_color(GdbColor::C0.as_sdl_color());
-      self.canvas.clear();
-      self.canvas.present();
-    }
+    // if line == 0 {
+    //   self.canvas.set_draw_color(GdbColor::C0.as_sdl_color());
+    //   self.canvas.clear();
+    //   self.canvas.present();
+    // }
 
     for i in 0..160 {
       self.clear_pixel(Point::new(i, line as usize));
@@ -266,6 +295,49 @@ impl Graphics {
     }
 
     self.canvas.present();
+  }
+
+  fn update_debug_background_window(&mut self) {
+    self.bg_debug_canvas.set_draw_color(Color::RGB(0, 0, 0));
+    self.bg_debug_canvas.clear();
+
+    // Background.
+    for row in 0..32 {
+      for col in 0..32 {
+        let orig_x = col * 8;
+        let orig_y = row * 8;
+
+        let tile_idx = row * 32 + col;
+        let tile_offs: usize = match self.background_tile_map_display_select() {
+          BackgroundTileMapDisplayRegion::Region_0x9800_0x9BFF => 0x9800 + tile_idx - 0x8000,
+          BackgroundTileMapDisplayRegion::Region_0x9C00_0x9FFF => 0x9c00 + tile_idx - 0x8000,
+        };
+        let map_region_start: usize = match self.background_and_window_tile_data_select() {
+          BackgroundAndWindowTileDataRegion::Region_0x8000_0x8FFF => 0x8000 - 0x8000,
+          BackgroundAndWindowTileDataRegion::Region_0x8800_0x97FF => 0x8800 - 0x8000,
+        };
+        let tile_block_size = 0x10;
+        let tile_addr: usize = map_region_start + (self.vmem[tile_offs] as usize * tile_block_size);
+
+        for iy in 0..8 {
+          for ix in 0..8 {
+            let color_bit_hi = (self.vmem[tile_addr + (iy * 2)] >> (7 - ix)) & 1;
+            let color_bit_lo = (self.vmem[tile_addr + (iy * 2) + 1] >> (7 - ix)) & 1;
+            let color_code = (color_bit_hi << 1) | color_bit_lo;
+            let color = self.color_bit_to_color(color_code);
+            self.bg_debug_canvas.set_draw_color(color.as_sdl_color());
+            let _ = self.bg_debug_canvas.fill_rect(Rect::new(
+              ((orig_x + ix) * Graphics::scale()) as i32,
+              ((orig_y + iy) * Graphics::scale()) as i32,
+              Graphics::scale() as u32,
+              Graphics::scale() as u32,
+            ));
+          }
+        }
+      }
+    }
+
+    self.bg_debug_canvas.present();
   }
 
   fn color_bit_to_color(&self, bitmask: u8) -> GdbColor {
@@ -364,14 +436,14 @@ impl Graphics {
 
     self.canvas.set_draw_color(color.as_sdl_color());
     let _ = self.canvas.fill_rect(Rect::new(
-      (coord.x * self.scale()) as i32,
-      (coord.y * self.scale()) as i32,
-      self.scale() as u32,
-      self.scale() as u32,
+      (coord.x * Graphics::scale()) as i32,
+      (coord.y * Graphics::scale()) as i32,
+      Graphics::scale() as u32,
+      Graphics::scale() as u32,
     ));
   }
 
-  fn scale(&self) -> usize {
-    4
+  fn scale() -> usize {
+    2
   }
 }

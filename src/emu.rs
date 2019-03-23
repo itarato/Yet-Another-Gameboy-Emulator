@@ -10,6 +10,7 @@ use super::timer::*;
 use super::util::*;
 
 use sdl2::Sdl;
+use std::rc::Rc;
 
 #[rustfmt::skip]
 const OPCODE_DUR: [u8; 256] = [
@@ -85,24 +86,18 @@ pub struct Emu {
   interrupts_enabled: bool,
   interrupts_enabled_new_value: bool,
   internal_rom_disabled: bool,
-  sdl: Sdl,
+  sdl: Rc<Sdl>,
 }
 
 impl Emu {
   pub fn new() -> Emu {
-    let sdl = sdl2::init().unwrap();
-    let video_subsystem = sdl.video().unwrap();
-    let window = video_subsystem
-      .window("Y.A.G.B.E.", 640, 576)
-      .opengl()
-      .build()
-      .unwrap();
+    let sdl = Rc::new(sdl2::init().unwrap());
 
     let mut emu: Emu = Emu {
       cpu: Cpu::default(),
       mem: Mem::default(),
       sound: Sound::default(),
-      graphics: Graphics::new(window.into_canvas().build().unwrap()),
+      graphics: Graphics::new(sdl.clone()),
       timer: Timer::default(),
       dmg_rom: Vec::new(),
       cycles: 0u64,
@@ -112,7 +107,7 @@ impl Emu {
       interrupts_enabled: false,
       interrupts_enabled_new_value: false,
       internal_rom_disabled: false,
-      sdl: sdl,
+      sdl: sdl.clone(),
     };
 
     emu.reset();
@@ -1350,16 +1345,16 @@ impl Emu {
   fn read_word(&self, addr: u16, force_read: bool) -> u8 {
     debug!("Read word from: 0x{:x}", addr);
     if Util::in_range(0x0000, 0x8000, addr) {
-      // if Util::in_range(0x0000, 0x0100, addr) && !self.internal_rom_disabled {
-      self.rom[addr as usize]
-    // } else {
-    //   if Util::in_range(0x0000, 0x0100, addr) {
-    //     self.dmg_rom[addr as usize]
-    //   } else {
-    //     // TODO This is only because we need the Nintendo logo from 0x0104 - be careful not sure if correct.
-    //     self.rom[addr as usize]
-    //   }
-    // }
+      if Util::in_range(0x0000, 0x0100, addr) && !self.internal_rom_disabled {
+        self.rom[addr as usize]
+      } else {
+        if Util::in_range(0x0000, 0x0100, addr) {
+          self.dmg_rom[addr as usize]
+        } else {
+          // TODO This is only because we need the Nintendo logo from 0x0104 - be careful not sure if correct.
+          self.rom[addr as usize]
+        }
+      }
     } else if Util::in_range(0xfe00, 0xfea0, addr)
       || Util::in_range(0x8000, 0xa000, addr)
       || Util::in_range(0xff40, 0xff6b, addr)
