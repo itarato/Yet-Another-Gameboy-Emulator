@@ -1,6 +1,7 @@
 use super::display_adapter::*;
 use super::util::*;
 use sdl2::pixels::Color;
+use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
 
 enum WindowTileMapDisplayRegion {
@@ -23,8 +24,39 @@ enum ObjectSpriteSize {
   Size8x16,
 }
 
+enum GdbColor {
+  C0,
+  C1,
+  C2,
+  C3,
+}
+
+impl GdbColor {
+  fn as_sdl_color(&self) -> Color {
+    match self {
+      GdbColor::C0 => Color::RGB(0, 0, 0),
+      GdbColor::C1 => Color::RGB(85, 85, 85),
+      GdbColor::C2 => Color::RGB(170, 170, 170),
+      GdbColor::C3 => Color::RGB(255, 255, 255),
+    }
+  }
+}
+
+#[derive(Default, Debug)]
+struct Point {
+  x: usize,
+  y: usize,
+}
+
+impl Point {
+  fn new(x: usize, y: usize) -> Point {
+    Point { x, y }
+  }
+}
+
 pub struct Graphics {
   lcdc: u8,
+  scx: u8,
   scy: u8,
   bgp: u8,
   ly_lcdc_y_coordinate: u8,
@@ -35,7 +67,6 @@ pub struct Graphics {
   vmem: [u8; 0x2000],
   oam: [u8; 0xa0],
   canvas: WindowCanvas,
-  backstage: [u8; 0x100 * 0x100],
 }
 
 impl Graphics {
@@ -44,6 +75,7 @@ impl Graphics {
       vmem: [0; 0x2000],
       oam: [0; 0xa0],
       lcdc: 0,
+      scx: 0,
       scy: 0,
       bgp: 0,
       ly_lcdc_y_coordinate: 0,
@@ -52,11 +84,11 @@ impl Graphics {
       line: 0,
       stat: 0,
       canvas,
-      backstage: [0; 0x100 * 0x100],
     }
   }
 
   pub fn reset(&mut self) {
+    self.lcdc = 0x91;
     self.canvas.set_draw_color(Color::RGB(0, 0, 0));
     self.canvas.clear();
     self.canvas.present();
@@ -90,27 +122,33 @@ impl Graphics {
     };
   }
 
-  pub fn read_word(&self, addr: u16) -> u8 {
+  pub fn read_word(&self, addr: u16, force_read: bool) -> u8 {
     let stat_mode = self.stat_mode();
     assert!(stat_mode <= 0b11);
 
-    if Util::in_range(0xfe00, 0xfea0, addr) {
-      // Sprite attribute table (OAM).
-      if stat_mode != 0b00 && stat_mode != 0b01 {
-        debug!("OAM read is ignored.");
-        0xff
-      } else {
-        self.oam[addr as usize - 0xfe00]
+    match addr {
+      0xfe00...0xfe9f => {
+        // Sprite attribute table (OAM).
+        if force_read || stat_mode == 0b00 || stat_mode == 0b01 {
+          self.oam[addr as usize - 0xfe00]
+        } else {
+          debug!("OAM read is ignored.");
+          0xff
+        }
       }
-    } else if Util::in_range(0x8000, 0xa000, addr) {
-      if stat_mode == 0b11 {
-        debug!("VMEM read is ignored.");
-        0xff
-      } else {
-        self.vmem[addr as usize - 0x8000]
+      0x8000...0x9fff => {
+        if !force_read && stat_mode == 0b11 {
+          debug!("VMEM read is ignored.");
+          0xff
+        } else {
+          self.vmem[addr as usize - 0x8000]
+        }
       }
-    } else {
-      unimplemented!("Unrecognized video address: 0x{:>04x}", addr);
+      0xff40 => self.lcdc,
+      0xff42 => self.scy,
+      0xff44 => self.ly_lcdc_y_coordinate,
+      0xff47 => self.bgp,
+      _ => unimplemented!("Unrecognized video address: 0x{:>04x}", addr),
     }
   }
 
@@ -133,6 +171,7 @@ impl Graphics {
         // !!! Draw should happen here !!!
         if self.mode_timer >= 688 {
           // HERE DRAW LINE <self.line> from backstage.
+          self.draw_hline(self.line);
 
           self.mode_timer = self.mode_timer % 688;
           self.set_stat_mode(0b00);
@@ -145,7 +184,8 @@ impl Graphics {
 
           self.line += 1;
 
-          if self.line == 143 {
+          if self.line == 144 {
+            // This was 143 but seems we need all 0-143 to be accessible in state 0b11.
             self.set_stat_mode(0b01);
           // TODO Possibly do something on screen .. http://imrannazar.com/GameBoy-Emulation-in-JavaScript:-GPU-Timings
           // Possibly not.
@@ -159,14 +199,79 @@ impl Graphics {
           // Vertical blank.
           self.mode_timer = self.mode_timer % 18240;
           self.line = 0;
+          self.set_stat_mode(0b10);
         }
       }
       mode @ _ => panic!("Illegal LCDC mode: 0b{:b}", mode),
     }
   }
 
-  fn print_to_display(&mut self) {
-    self.clear_backstage();
+  fn draw_hline(&mut self, line: u8) {
+    dbg!(self.scy);
+
+    if line == 0 {
+      self.canvas.set_draw_color(GdbColor::C0.as_sdl_color());
+      self.canvas.clear();
+      self.canvas.present();
+    }
+
+    for i in 0..160 {
+      self.clear_pixel(Point::new(i, line as usize));
+    }
+
+    // Background.
+    for row in 0..32 {
+      for col in 0..32 {
+        let orig_x = col * 8;
+        let orig_y = row * 8;
+        let virt_x: i32 = (orig_x as i32 + 256 - self.scx as i32) % 256;
+        let virt_y: i32 = (orig_y as i32 + 256 - self.scy as i32) % 256;
+
+        let tile_line: i32 = line as i32 - virt_y;
+
+        // The tile line would not be presented on the visible line scan.
+        if tile_line < 0 || tile_line >= 8 || virt_x >= 160 {
+          continue;
+        }
+
+        let tile_idx = row * 32 + col;
+        let tile_offs: usize = match self.background_tile_map_display_select() {
+          BackgroundTileMapDisplayRegion::Region_0x9800_0x9BFF => 0x9800 + tile_idx - 0x8000,
+          BackgroundTileMapDisplayRegion::Region_0x9C00_0x9FFF => 0x9c00 + tile_idx - 0x8000,
+        };
+        let map_region_start: usize = match self.background_and_window_tile_data_select() {
+          BackgroundAndWindowTileDataRegion::Region_0x8000_0x8FFF => 0x8000 - 0x8000,
+          BackgroundAndWindowTileDataRegion::Region_0x8800_0x97FF => 0x8800 - 0x8000,
+        };
+        let tile_block_size = 0x10;
+        let tile_addr: usize = map_region_start + (self.vmem[tile_offs] * tile_block_size) as usize;
+
+        for i in 0..8 {
+          // Out of screen.
+          if virt_x + i >= 160 {
+            continue;
+          }
+
+          let color_bit_hi = (self.vmem[tile_addr + (line as usize * 2)] >> (7 - i)) & 1;
+          let color_bit_lo = (self.vmem[tile_addr + (line as usize * 2) + 1] >> (7 - i)) & 1;
+          let color_code = (color_bit_hi << 1) | color_bit_lo;
+          let color = self.color_bit_to_color(color_code);
+          self.set_pixel(color, Point::new((virt_x + i) as usize, line as usize));
+        }
+      }
+    }
+
+    self.canvas.present();
+  }
+
+  fn color_bit_to_color(&self, bitmask: u8) -> GdbColor {
+    match bitmask {
+      0b00 => GdbColor::C0,
+      0b01 => GdbColor::C1,
+      0b10 => GdbColor::C2,
+      0b11 => GdbColor::C3,
+      _ => panic!("Invalid color bitmask."),
+    }
   }
 
   fn stat_mode(&self) -> u8 {
@@ -246,7 +351,23 @@ impl Graphics {
     self.display.draw();
   }
 
-  fn clear_backstage(&mut self) {
-    self.backstage = [0; 256 * 256];
+  fn clear_pixel(&mut self, coord: Point) {
+    self.set_pixel(GdbColor::C0, coord);
+  }
+
+  fn set_pixel(&mut self, color: GdbColor, coord: Point) {
+    assert!(coord.x < 160 && coord.y < 144);
+
+    self.canvas.set_draw_color(color.as_sdl_color());
+    let _ = self.canvas.fill_rect(Rect::new(
+      (coord.x * self.scale()) as i32,
+      (coord.y * self.scale()) as i32,
+      self.scale() as u32,
+      self.scale() as u32,
+    ));
+  }
+
+  fn scale(&self) -> usize {
+    4
   }
 }

@@ -178,7 +178,7 @@ impl Emu {
       self.interrupts_enabled = false;
 
       // Disable specific interrupt request.
-      let flag_off = Util::setbit(self.read_word(0xff0f), 0, 0x0);
+      let flag_off = Util::setbit(self.read_word(0xff0f, false), 0, 0x0);
       self.write_word(0xff0f, flag_off);
       self.cycles += 2;
 
@@ -205,7 +205,7 @@ impl Emu {
     let timer_result = self.timer.update(cycles_prev, self.cycles);
 
     if timer_result.interrupt_generated {
-      let new_interrupts = Util::setbit(self.read_word(0xff0f), 2, 0x1);
+      let new_interrupts = Util::setbit(self.read_word(0xff0f, false), 2, 0x1);
       self.write_word(0xff0f, new_interrupts)
     }
   }
@@ -570,7 +570,7 @@ impl Emu {
       0x95 => op_sub_reg_from_a!(self, reg_l),
       // 0x96 | SUB (HL) | 1 | 8 | Z 1 H C
       0x96 => {
-        let acc = self.read_word(self.cpu.reg_hl());
+        let acc = self.read_word(self.cpu.reg_hl(), false);
         if !Util::has_half_borrow(self.cpu.reg_a, acc) {
           self.cpu.set_flag_half_carry(0x1);
         }
@@ -1335,27 +1335,29 @@ impl Emu {
       0xfe => unimplemented!("Prefix opcode 0xfe is not yet implemented"),
       // 0xff | SET 7,A | 2 | 8 | - - - -
       0xff => unimplemented!("Prefix opcode 0xff is not yet implemented"),
-      opcode @ _ => panic!("Invalid prefix opcode: {:?}", opcode),
     };
 
     self.cycles += OPCODE_DUR_PREFIX[opcode as usize] as u64;
   }
 
-  fn read_word(&self, addr: u16) -> u8 {
+  fn read_word(&self, addr: u16, force_read: bool) -> u8 {
     debug!("Read word from: 0x{:x}", addr);
     if Util::in_range(0x0000, 0x8000, addr) {
-      if Util::in_range(0x0000, 0x0100, addr) && !self.internal_rom_disabled {
-        self.rom[addr as usize]
-      } else {
-        if Util::in_range(0x0000, 0x0100, addr) {
-          self.dmg_rom[addr as usize]
-        } else {
-          // TODO This is only because we need the Nintendo logo from 0x0104 - be careful not sure if correct.
-          self.rom[addr as usize]
-        }
-      }
-    } else if Util::in_range(0xfe00, 0xfea0, addr) || Util::in_range(0x8000, 0xa000, addr) {
-      self.graphics.read_word(addr)
+      // if Util::in_range(0x0000, 0x0100, addr) && !self.internal_rom_disabled {
+      self.rom[addr as usize]
+    // } else {
+    //   if Util::in_range(0x0000, 0x0100, addr) {
+    //     self.dmg_rom[addr as usize]
+    //   } else {
+    //     // TODO This is only because we need the Nintendo logo from 0x0104 - be careful not sure if correct.
+    //     self.rom[addr as usize]
+    //   }
+    // }
+    } else if Util::in_range(0xfe00, 0xfea0, addr)
+      || Util::in_range(0x8000, 0xa000, addr)
+      || Util::in_range(0xff40, 0xff6b, addr)
+    {
+      self.graphics.read_word(addr, force_read)
     } else {
       self.mem.read_word(addr)
     }
@@ -1375,10 +1377,7 @@ impl Emu {
       match addr {
         0xff0f => self.mem.write_word(addr, w),
         0xff10...0xff3f => self.sound.write_word(addr, w),
-        0xff40 => self.graphics.write_word(addr, w),
-        0xff42 => self.graphics.write_word(addr, w),
-        0xff44 => self.graphics.write_word(addr, w),
-        0xff47 => self.graphics.write_word(addr, w),
+        0xff40...0xff6b => self.graphics.write_word(addr, w),
         _ => unimplemented!("Unimplemented IO port: 0x{:>04x}", addr),
       };
     } else {
@@ -1392,7 +1391,7 @@ impl Emu {
 
   pub fn read_opcode_word(&mut self) -> u8 {
     let addr = self.cpu.pc_inc();
-    self.read_word(addr)
+    self.read_word(addr, false)
   }
 
   fn read_opcode_dword(&mut self) -> u16 {
@@ -1407,7 +1406,7 @@ impl Emu {
   }
 
   fn read_rom(&mut self) {
-    let mut rom_file = File::open("asset/tetris.gb").unwrap();
+    let mut rom_file = File::open("asset/mario.gb").unwrap();
     let _ = rom_file.read_to_end(&mut self.rom).unwrap();
   }
 
@@ -1423,7 +1422,7 @@ impl Emu {
 
   pub fn pop_word(&mut self) -> u8 {
     self.cpu.sp += 1;
-    self.read_word(self.cpu.sp)
+    self.read_word(self.cpu.sp, false)
   }
 
   pub fn pop_dword(&mut self) -> u16 {
@@ -1444,43 +1443,43 @@ impl Emu {
   }
 
   fn interrupt_enabled_v_blank(&self) -> bool {
-    bitn!(self.read_word(0xffff), 0) == 0x1
+    bitn!(self.read_word(0xffff, false), 0) == 0x1
   }
 
   fn interrupt_enabled_lcd_stat(&self) -> bool {
-    bitn!(self.read_word(0xffff), 1) == 0x1
+    bitn!(self.read_word(0xffff, false), 1) == 0x1
   }
 
   fn interrupt_enabled_timer(&self) -> bool {
-    bitn!(self.read_word(0xffff), 2) == 0x1
+    bitn!(self.read_word(0xffff, false), 2) == 0x1
   }
 
   fn interrupt_enabled_serial(&self) -> bool {
-    bitn!(self.read_word(0xffff), 3) == 0x1
+    bitn!(self.read_word(0xffff, false), 3) == 0x1
   }
 
   fn interrupt_enabled_joypad(&self) -> bool {
-    bitn!(self.read_word(0xffff), 4) == 0x1
+    bitn!(self.read_word(0xffff, false), 4) == 0x1
   }
 
   fn interrupt_flag_v_blank(&self) -> bool {
-    bitn!(self.read_word(0xff0f), 0) == 0x1
+    bitn!(self.read_word(0xff0f, false), 0) == 0x1
   }
 
   fn interrupt_flag_lcd_stat(&self) -> bool {
-    bitn!(self.read_word(0xff0f), 1) == 0x1
+    bitn!(self.read_word(0xff0f, false), 1) == 0x1
   }
 
   fn interrupt_flag_timer(&self) -> bool {
-    bitn!(self.read_word(0xff0f), 2) == 0x1
+    bitn!(self.read_word(0xff0f, false), 2) == 0x1
   }
 
   fn interrupt_flag_serial(&self) -> bool {
-    bitn!(self.read_word(0xff0f), 3) == 0x1
+    bitn!(self.read_word(0xff0f, false), 3) == 0x1
   }
 
   fn interrupt_flag_joypad(&self) -> bool {
-    bitn!(self.read_word(0xff0f), 4) == 0x1
+    bitn!(self.read_word(0xff0f, false), 4) == 0x1
   }
 
   fn mem_debug_print(&self, addr: u16, len: usize) {
@@ -1493,7 +1492,7 @@ impl Emu {
         print!(" ");
       }
 
-      print!("{:>02x} ", self.read_word(addr + offs as u16));
+      print!("{:>02x} ", self.read_word(addr + offs as u16, true));
     }
 
     println!("");

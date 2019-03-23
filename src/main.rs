@@ -17,13 +17,19 @@ pub mod timer;
 pub mod util;
 
 use self::emu::*;
+use std::env;
 
 fn main() {
   env_logger::init();
 
   info!("Emulator start");
 
+  let args: Vec<String> = env::args().collect();
+
   let mut emu = Emu::new();
-  // emu.enable_debug_mode();
+
+  if args.iter().find(|&arg| arg == "--debug").is_some() {
+    emu.enable_debug_mode();
+  }
   emu.run();
 }

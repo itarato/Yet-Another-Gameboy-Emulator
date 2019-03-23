@@ -81,7 +81,11 @@ impl Debugger {
       }
       "memory" | "mem" | "m" => {
         let addr = u16::from_str_radix(parts[1], 16).unwrap();
-        let len = usize::from_str_radix(parts[2], 10).unwrap();
+        let len = if parts.len() > 2 {
+          usize::from_str_radix(parts[2], 10).unwrap()
+        } else {
+          1
+        };
         DebuggerCommand::MemoryPrint(addr, len)
       }
       "cpu" => DebuggerCommand::CpuPrint,

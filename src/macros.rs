@@ -26,7 +26,7 @@ macro_rules! load_word_to_reg_from_reg {
 macro_rules! load_word_to_reg_from_reg_addr {
   ($reg_to:ident, $reg_from_hi:ident, $reg_from_lo:ident, $sel:ident) => {{
     let addr = dword!($sel.cpu.$reg_from_hi, $sel.cpu.$reg_from_lo);
-    $sel.cpu.$reg_to = $sel.read_word(addr);
+    $sel.cpu.$reg_to = $sel.read_word(addr, false);
   }};
 }
 

@@ -21,6 +21,7 @@ impl Cpu {
 
   pub fn reset(&mut self) {
     self.sp = 0xfffe;
+    self.pc = 0x150;
   }
 
   pub fn reg_af(&self) -> u16 {
