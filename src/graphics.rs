@@ -56,6 +56,11 @@ impl Point {
   }
 }
 
+#[derive(Debug, Default)]
+pub struct GraphicsUpdateResult {
+  pub vblank_interrupt_generated: bool,
+}
+
 pub struct Graphics {
   lcdc: u8,
   scx: u8,
@@ -141,7 +146,7 @@ impl Graphics {
       }
       0xff40 => self.set_lcdc(w),
       0xff41 => self.stat = (self.stat & 0b111) | (w & 0b1111_1000),
-      0xff42 => self.scy = 0,
+      0xff42 => self.scy = w,
       0xff43 => self.scx = w,
       0xff44 => self.ly_lcdc_y_coordinate = 0x0,
       0xff47 => self.bgp = w,
@@ -181,8 +186,9 @@ impl Graphics {
     }
   }
 
-  pub fn update(&mut self, cycles_prev: u64, cycles: u64) {
+  pub fn update(&mut self, cycles_prev: u64, cycles: u64) -> GraphicsUpdateResult {
     assert!(cycles_prev < cycles);
+    let mut response = GraphicsUpdateResult::default();
 
     self.mode_timer += cycles - cycles_prev;
 
@@ -220,8 +226,9 @@ impl Graphics {
           if self.line == 144 {
             // This was 143 but seems we need all 0-143 to be accessible in state 0b11.
             self.set_stat_mode(0b01);
-          // TODO Possibly do something on screen .. http://imrannazar.com/GameBoy-Emulation-in-JavaScript:-GPU-Timings
-          // Possibly not.
+            // TODO Possibly do something on screen .. http://imrannazar.com/GameBoy-Emulation-in-JavaScript:-GPU-Timings
+            // Possibly not.
+            response.vblank_interrupt_generated = true;
           } else {
             self.set_stat_mode(0b10);
           }
@@ -237,6 +244,8 @@ impl Graphics {
       }
       mode @ _ => panic!("Illegal LCDC mode: 0b{:b}", mode),
     }
+
+    response
   }
 
   fn draw_hline(&mut self, line: u8) {

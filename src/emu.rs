@@ -171,6 +171,7 @@ impl Emu {
     }
 
     info!("Interrupt check.");
+    // dbg!("INTERRUPT CHECK");
 
     if self.interrupt_enabled_v_blank() && self.interrupt_flag_v_blank() {
       // Disable interrupts.
@@ -205,12 +206,16 @@ impl Emu {
 
     if timer_result.interrupt_generated {
       let new_interrupts = Util::setbit(self.read_word(0xff0f, false), 2, 0x1);
-      self.write_word(0xff0f, new_interrupts)
+      self.write_word(0xff0f, new_interrupts);
     }
   }
 
   fn handle_graphics(&mut self, cycles_prev: u64) {
-    self.graphics.update(cycles_prev, self.cycles);
+    let response = self.graphics.update(cycles_prev, self.cycles);
+    if response.vblank_interrupt_generated {
+      let new_interrupts = Util::setbit(self.read_word(0xff0f, false), 0, 0x1);
+      self.write_word(0xff0f, new_interrupts);
+    }
   }
 
   fn handle_input_check(&mut self) {

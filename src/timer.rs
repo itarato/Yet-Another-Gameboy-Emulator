@@ -17,14 +17,6 @@ pub struct TimerResult {
   pub interrupt_generated: bool,
 }
 
-impl TimerResult {
-  fn new(interrupt_generated: bool) -> TimerResult {
-    TimerResult {
-      interrupt_generated,
-    }
-  }
-}
-
 #[derive(Debug, Default)]
 pub struct Timer {
   div: u8,
