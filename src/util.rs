@@ -9,10 +9,6 @@ impl Util {
       | (bitval << bitnum)
   }
 
-  pub fn in_range<T: PartialOrd>(min: T, max: T, val: T) -> bool {
-    min <= val && val < max
-  }
-
   pub fn has_half_carry(w: u8, acc: u8) -> bool {
     (w & 0xf) + (acc & 0xf) > 0xf
   }
@@ -63,12 +59,26 @@ impl BitNumerics for u16 {
   }
 }
 
-#[test]
-fn test_bitval() {
-  assert_eq!(0b1001_1000, Util::setbit(0b1001_1001, 0, 0));
-  assert_eq!(0b1001_1001, Util::setbit(0b1001_1001, 0, 1));
-  assert_eq!(0b1001_1001, Util::setbit(0b1001_1001, 1, 0));
-  assert_eq!(0b1001_1011, Util::setbit(0b1001_1001, 1, 1));
-  assert_eq!(0b0001_1001, Util::setbit(0b1001_1001, 7, 0));
-  assert_eq!(0b1001_1001, Util::setbit(0b1001_1001, 7, 1));
+#[cfg(test)]
+mod test {
+  use super::*;
+
+  #[test]
+  fn test_has_half_carry() {
+    assert!(Util::has_half_carry(0b1001_1000, 0b1000));
+    assert!(Util::has_half_carry(0b1001_1001, 0b1110));
+
+    assert!(!Util::has_half_carry(0b1001_1000, 0b0111));
+    assert!(!Util::has_half_carry(0b1001_1001, 0b0001_0000));
+  }
+
+  #[test]
+  fn test_setbit() {
+    assert_eq!(0b1001_1000, Util::setbit(0b1001_1001, 0, 0));
+    assert_eq!(0b1001_1001, Util::setbit(0b1001_1001, 0, 1));
+    assert_eq!(0b1001_1001, Util::setbit(0b1001_1001, 1, 0));
+    assert_eq!(0b1001_1011, Util::setbit(0b1001_1001, 1, 1));
+    assert_eq!(0b0001_1001, Util::setbit(0b1001_1001, 7, 0));
+    assert_eq!(0b1001_1001, Util::setbit(0b1001_1001, 7, 1));
+  }
 }

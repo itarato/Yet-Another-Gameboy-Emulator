@@ -11,6 +11,7 @@ pub enum DebuggerCommand {
   CpuPrint,
   Quit,
   Display,
+  PrintBackgroundMap,
 }
 
 #[derive(Default)]
@@ -88,6 +89,7 @@ impl Debugger {
         };
         DebuggerCommand::MemoryPrint(addr, len)
       }
+      "backgroundmap" | "bgmap" | "bgm" => DebuggerCommand::PrintBackgroundMap,
       "cpu" => DebuggerCommand::CpuPrint,
       "display" | "d" => DebuggerCommand::Display,
       "exit" | "e" | "quit" | "q" => DebuggerCommand::Quit,

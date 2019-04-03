@@ -19,10 +19,6 @@ impl Sound {
   }
 
   pub fn write_word(&mut self, addr: u16, w: u8) {
-    if !Util::in_range(0xff10, 0xff40, addr) {
-      panic!("Unsupported sound addr: 0x{:>04x}", addr);
-    }
-
     match addr {
       0xff10 => self.nr10 = w,
       0xff11 => self.nr11 = w,
@@ -33,6 +29,7 @@ impl Sound {
       0xff24 => self.nr50 = w,
       0xff25 => self.nr51 = w,
       0xff26 => self.nr52 = w,
+      0xff10...0xff39 => panic!("Unsupported sound addr: 0x{:>04x}", addr),
       _ => unimplemented!("Unimplemented sound addr: 0x{:>04x}", addr),
     };
   }

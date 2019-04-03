@@ -47,18 +47,6 @@ macro_rules! xor_reg {
   }};
 }
 
-macro_rules! hi {
-  ($dw:expr) => {{
-    ($dw >> 0x8) as u8
-  }};
-}
-
-macro_rules! lo {
-  ($dw:expr) => {{
-    ($dw & 0xff) as u8
-  }};
-}
-
 macro_rules! set_dword_register {
     ($fname:ident, $reg_hi:ident, $reg_lo:ident) => (
       pub fn $fname(&mut self, dw: u16) {
@@ -73,8 +61,8 @@ macro_rules! dec_dword_reg {
     pub fn $fname(&mut self) {
       let mut dw = dword!(self.$reg_hi, self.$reg_lo);
       dw = dw.wrapping_sub(1);
-      self.$reg_hi = hi!(dw);
-      self.$reg_lo = lo!(dw);
+      self.$reg_hi = dw.hi();
+      self.$reg_lo = dw.lo();
     }
   )
 }
@@ -84,8 +72,8 @@ macro_rules! inc_dword_reg {
     pub fn $fname(&mut self) {
       let mut dw = dword!(self.$reg_hi, self.$reg_lo);
       dw = dw.wrapping_add(1);
-      self.$reg_hi = hi!(dw);
-      self.$reg_lo = lo!(dw);
+      self.$reg_hi = dw.hi();
+      self.$reg_lo = dw.lo();
     }
   )
 }
@@ -116,6 +104,8 @@ macro_rules! op_dec_reg {
   ($sel:ident, $reg:ident) => {{
     if !Util::has_half_borrow($sel.cpu.$reg, 0x1) {
       $sel.cpu.set_flag_half_carry(0x1);
+    } else {
+      $sel.cpu.set_flag_half_carry(0x0);
     }
     $sel.cpu.$reg = $sel.cpu.$reg.wrapping_sub(1);
     $sel.cpu.set_flag_zero_for($sel.cpu.$reg);
@@ -127,6 +117,8 @@ macro_rules! op_inc_reg {
   ($sel:ident, $reg:ident) => {{
     if Util::has_half_carry($sel.cpu.$reg, 0x1) {
       $sel.cpu.set_flag_half_carry(0x1);
+    } else {
+      $sel.cpu.set_flag_half_carry(0x0);
     }
     $sel.cpu.$reg = $sel.cpu.$reg.wrapping_add(1);
     $sel.cpu.set_flag_zero_for($sel.cpu.$reg);
@@ -150,9 +142,13 @@ macro_rules! op_sub_reg_from_a {
   ($sel:ident, $reg:ident) => {{
     if !Util::has_half_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
       $sel.cpu.set_flag_half_carry(0x1);
+    } else {
+      $sel.cpu.set_flag_half_carry(0x0);
     }
     if !Util::has_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
       $sel.cpu.set_flag_carry(0x1);
+    } else {
+      $sel.cpu.set_flag_carry(0x0);
     }
 
     $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_sub($sel.cpu.$reg);
@@ -165,8 +161,12 @@ macro_rules! op_cp_with_a {
   ($sel:ident, $reg:ident) => {{
     if !Util::has_half_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
       $sel.cpu.set_flag_half_carry(0x1);
+    } else {
+      $sel.cpu.set_flag_half_carry(0x0);
     }
     if !Util::has_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
+      $sel.cpu.set_flag_carry(0x1);
+    } else {
       $sel.cpu.set_flag_carry(0x1);
     }
 

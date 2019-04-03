@@ -159,6 +159,7 @@ impl Emu {
       DebuggerCommand::Breakpoint => { /* keep it stopped */ }
       DebuggerCommand::Continue | DebuggerCommand::Next => return,
       DebuggerCommand::Display => self.graphics.draw_display(),
+      DebuggerCommand::PrintBackgroundMap => self.graphics.update_debug_background_window(),
       _ => {}
     };
 
@@ -577,9 +578,13 @@ impl Emu {
         let acc = self.read_word(self.cpu.reg_hl(), false);
         if !Util::has_half_borrow(self.cpu.reg_a, acc) {
           self.cpu.set_flag_half_carry(0x1);
+        } else {
+          self.cpu.set_flag_half_carry(0x0);
         }
         if !Util::has_borrow(self.cpu.reg_a, acc) {
           self.cpu.set_flag_carry(0x1);
+        } else {
+          self.cpu.set_flag_carry(0x0);
         }
 
         self.cpu.reg_a = self.cpu.reg_a.wrapping_sub(acc);
@@ -746,7 +751,7 @@ impl Emu {
       0xe1 => unimplemented!("Opcode 0xe1 is not yet implemented"),
       // 0xe2 | LD (C),A | 2 | 8 | - - - -
       0xe2 => {
-        let addr = 0xff00 + self.cpu.reg_c as u16;
+        let addr = 0xff00 | self.cpu.reg_c as u16;
         self.write_word(addr, self.cpu.reg_a);
       }
       // 0xe5 | PUSH HL | 1 | 16 | - - - -
@@ -771,7 +776,7 @@ impl Emu {
       // 0xf0 | LDH A,(a8) | 2 | 12 | - - - -
       0xf0 => {
         let addr = 0xff00 | self.read_opcode_word() as u16;
-        self.write_word(addr, self.cpu.reg_a);
+        self.cpu.reg_a = self.read_word(addr, false);
       }
       // 0xf1 | POP AF | 1 | 12 | Z N H C
       0xf1 => unimplemented!("Opcode 0xf1 is not yet implemented"),
@@ -798,9 +803,13 @@ impl Emu {
         let acc = self.read_opcode_word();
         if !Util::has_half_borrow(self.cpu.reg_a, acc) {
           self.cpu.set_flag_half_carry(0x1);
+        } else {
+          self.cpu.set_flag_half_carry(0x0);
         }
         if !Util::has_borrow(self.cpu.reg_a, acc) {
           self.cpu.set_flag_carry(0x1);
+        } else {
+          self.cpu.set_flag_carry(0x0);
         }
 
         self
@@ -1349,24 +1358,20 @@ impl Emu {
 
   fn read_word(&self, addr: u16, force_read: bool) -> u8 {
     debug!("Read word from: 0x{:x}", addr);
-    if Util::in_range(0x0000, 0x8000, addr) {
-      if Util::in_range(0x0000, 0x0100, addr) && !self.internal_rom_disabled {
-        self.rom[addr as usize]
-      } else {
-        if Util::in_range(0x0000, 0x0100, addr) {
+
+    match addr {
+      0x0000...0x00ff => {
+        if !self.internal_rom_disabled {
           self.dmg_rom[addr as usize]
         } else {
-          // TODO This is only because we need the Nintendo logo from 0x0104 - be careful not sure if correct.
           self.rom[addr as usize]
         }
       }
-    } else if Util::in_range(0xfe00, 0xfea0, addr)
-      || Util::in_range(0x8000, 0xa000, addr)
-      || Util::in_range(0xff40, 0xff6b, addr)
-    {
-      self.graphics.read_word(addr, force_read)
-    } else {
-      self.mem.read_word(addr)
+      0x0100...0x7fff => self.rom[addr as usize],
+      0xfe00...0xfe9f | 0x8000...0x9fff | 0xff40...0xff6a => {
+        self.graphics.read_word(addr, force_read)
+      }
+      _ => self.mem.read_word(addr),
     }
   }
 
@@ -1416,7 +1421,7 @@ impl Emu {
   }
 
   fn read_rom(&mut self) {
-    let mut rom_file = File::open("asset/mario.gb").unwrap();
+    let mut rom_file = File::open("asset/tetris.gb").unwrap();
     let _ = rom_file.read_to_end(&mut self.rom).unwrap();
   }
 
@@ -1442,7 +1447,7 @@ impl Emu {
   }
 
   fn reset(&mut self) {
-    self.internal_rom_disabled = true;
+    self.internal_rom_disabled = false;
 
     self.cpu.reset();
     self.mem.reset();

@@ -295,7 +295,7 @@ impl Graphics {
     self.canvas.present();
   }
 
-  fn update_debug_background_window(&mut self) {
+  pub fn update_debug_background_window(&mut self) {
     self.bg_debug_canvas.set_draw_color(Color::RGB(0, 0, 0));
     self.bg_debug_canvas.clear();
 
@@ -333,6 +333,19 @@ impl Graphics {
             ));
           }
         }
+
+        // Checker background.
+        // if (row + col) % 2 == 1 {
+        //   self
+        //     .bg_debug_canvas
+        //     .set_draw_color(Color::RGBA(240, 240, 240, 10));
+        //   let _ = self.bg_debug_canvas.fill_rect(Rect::new(
+        //     (orig_x * Graphics::scale()) as i32,
+        //     (orig_y * Graphics::scale()) as i32,
+        //     Graphics::scale() as u32 * 8,
+        //     Graphics::scale() as u32 * 8,
+        //   ));
+        // }
       }
     }
 
