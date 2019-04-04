@@ -58,7 +58,7 @@ impl Cpu {
   cpu_flag_fn! { flag_carry, set_flag_carry, reset_flag_carry, 4 }
 
   pub fn set_flag_zero_for(&mut self, w: u8) {
-    self.set_flag_zero(if w == 0 { 0x1 } else { 0x0 });
+    self.set_flag_zero((w == 0).as_bit());
   }
 
   pub fn pc_inc(&mut self) -> u16 {
