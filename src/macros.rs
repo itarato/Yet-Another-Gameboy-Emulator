@@ -102,33 +102,25 @@ macro_rules! op_bit_test {
 
 macro_rules! op_dec_reg {
   ($sel:ident, $reg:ident) => {{
-    if !Util::has_half_borrow($sel.cpu.$reg, 0x1) {
-      $sel.cpu.set_flag_half_carry(0x1);
-    } else {
-      $sel.cpu.set_flag_half_carry(0x0);
-    }
-    $sel.cpu.$reg = $sel.cpu.$reg.wrapping_sub(1);
+    $sel.cpu.set_flag_half_carry(Util::has_half_borrow($sel.cpu.$reg, 0b1).as_bit());
+    $sel.cpu.$reg = $sel.cpu.$reg.wrapping_sub(0b1);
     $sel.cpu.set_flag_zero_for($sel.cpu.$reg);
-    $sel.cpu.set_flag_add_sub(0x1);
+    $sel.cpu.set_flag_add_sub(0b1);
   }};
 }
 
 macro_rules! op_inc_reg {
   ($sel:ident, $reg:ident) => {{
-    if Util::has_half_carry($sel.cpu.$reg, 0x1) {
-      $sel.cpu.set_flag_half_carry(0x1);
-    } else {
-      $sel.cpu.set_flag_half_carry(0x0);
-    }
-    $sel.cpu.$reg = $sel.cpu.$reg.wrapping_add(1);
+    $sel.cpu.set_flag_half_carry(Util::has_half_carry($sel.cpu.$reg, 0b1).as_bit());
+    $sel.cpu.$reg = $sel.cpu.$reg.wrapping_add(0b1);
     $sel.cpu.set_flag_zero_for($sel.cpu.$reg);
-    $sel.cpu.reset_flag_add_sub();
+    $sel.cpu.set_flag_add_sub(0b0);
   }};
 }
 
 macro_rules! rot_left_reg {
   ($sel:ident, $reg:ident) => {{
-    let old_carry = if $sel.cpu.flag_carry() { 1 } else { 0 };
+    let old_carry = $sel.cpu.flag_carry().as_bit();
     $sel.cpu.set_flag_carry(bitn!($sel.cpu.$reg, 0x7));
 
     $sel.cpu.$reg = ($sel.cpu.$reg << 1) | old_carry;
@@ -140,16 +132,13 @@ macro_rules! rot_left_reg {
 
 macro_rules! op_sub_reg_from_a {
   ($sel:ident, $reg:ident) => {{
-    if !Util::has_half_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
-      $sel.cpu.set_flag_half_carry(0x1);
-    } else {
-      $sel.cpu.set_flag_half_carry(0x0);
-    }
-    if !Util::has_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
-      $sel.cpu.set_flag_carry(0x1);
-    } else {
-      $sel.cpu.set_flag_carry(0x0);
-    }
+    $sel
+      .cpu
+      .set_flag_half_carry(Util::has_half_borrow($sel.cpu.reg_a, $sel.cpu.$reg).as_bit());
+
+    $sel
+      .cpu
+      .set_flag_carry(Util::has_borrow($sel.cpu.reg_a, $sel.cpu.$reg).as_bit());
 
     $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_sub($sel.cpu.$reg);
     $sel.cpu.set_flag_zero_for($sel.cpu.reg_a);
@@ -159,22 +148,16 @@ macro_rules! op_sub_reg_from_a {
 
 macro_rules! op_cp_with_a {
   ($sel:ident, $reg:ident) => {{
-    if !Util::has_half_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
-      $sel.cpu.set_flag_half_carry(0x1);
-    } else {
-      $sel.cpu.set_flag_half_carry(0x0);
-    }
-    if !Util::has_borrow($sel.cpu.reg_a, $sel.cpu.$reg) {
-      $sel.cpu.set_flag_carry(0x1);
-    } else {
-      $sel.cpu.set_flag_carry(0x1);
-    }
+    $sel
+      .cpu
+      .set_flag_half_carry(Util::has_half_borrow($sel.cpu.reg_a, $sel.cpu.$reg).as_bit());
+    $sel
+      .cpu
+      .set_flag_carry(Util::has_borrow($sel.cpu.reg_a, $sel.cpu.$reg).as_bit());
 
-    $sel.cpu.set_flag_zero(if $sel.cpu.reg_a == $sel.cpu.$reg {
-      0x1
-    } else {
-      0x0
-    });
-    $sel.cpu.set_flag_add_sub(0x1);
+    $sel
+      .cpu
+      .set_flag_zero(($sel.cpu.reg_a == $sel.cpu.$reg).as_bit());
+    $sel.cpu.set_flag_add_sub(0b1);
   }};
 }

@@ -44,6 +44,19 @@ impl Util {
   }
 }
 
+pub trait BoolNumerics {
+  fn as_bit(&self) -> u8;
+}
+
+impl BoolNumerics for bool {
+  fn as_bit(&self) -> u8 {
+    match self {
+      true => 0b1,
+      false => 0b0,
+    }
+  }
+}
+
 pub trait BitNumerics {
   fn hi(&self) -> u8;
   fn lo(&self) -> u8;
@@ -64,15 +77,6 @@ mod test {
   use super::*;
 
   #[test]
-  fn test_has_half_carry() {
-    assert!(Util::has_half_carry(0b1001_1000, 0b1000));
-    assert!(Util::has_half_carry(0b1001_1001, 0b1110));
-
-    assert!(!Util::has_half_carry(0b1001_1000, 0b0111));
-    assert!(!Util::has_half_carry(0b1001_1001, 0b0001_0000));
-  }
-
-  #[test]
   fn test_setbit() {
     assert_eq!(0b1001_1000, Util::setbit(0b1001_1001, 0, 0));
     assert_eq!(0b1001_1001, Util::setbit(0b1001_1001, 0, 1));
@@ -80,5 +84,44 @@ mod test {
     assert_eq!(0b1001_1011, Util::setbit(0b1001_1001, 1, 1));
     assert_eq!(0b0001_1001, Util::setbit(0b1001_1001, 7, 0));
     assert_eq!(0b1001_1001, Util::setbit(0b1001_1001, 7, 1));
+  }
+
+  #[test]
+  fn test_has_half_carry() {
+    assert!(Util::has_half_carry(0b1001_1000, 0b1000));
+    assert!(Util::has_half_carry(0b1001_1001, 0b1110));
+    assert!(Util::has_half_carry(0b1000_1111, 0b1));
+    assert!(Util::has_half_carry(0b1111, 0b1));
+
+    assert!(!Util::has_half_carry(0b1001_1000, 0b0111));
+    assert!(!Util::has_half_carry(0b1001_1001, 0b0001_0000));
+  }
+
+  #[test]
+  fn test_has_half_borrow() {
+    assert!(Util::has_half_borrow(0b0001_0000, 0b1));
+    assert!(Util::has_half_borrow(0b0001_0000, 0b10));
+    assert!(Util::has_half_borrow(0b0001_0001, 0b10));
+    assert!(Util::has_half_borrow(0x3e, 0xf));
+
+    assert!(!Util::has_half_borrow(0b0001_0000, 0b0));
+    assert!(!Util::has_half_borrow(0b0001_0001, 0b1));
+    assert!(!Util::has_half_borrow(0x3e, 0x40));
+  }
+
+  #[test]
+  fn test_has_carry() {
+    assert!(Util::has_carry(0b1111_1111, 0b1));
+    assert!(Util::has_carry(0b1111_1111, 0b1111_1111));
+
+    assert!(!Util::has_carry(0b1101_1111, 0b1));
+  }
+
+  #[test]
+  fn test_has_borrow() {
+    assert!(Util::has_borrow(0b0001_1000, 0b0001_1001));
+    assert!(Util::has_borrow(0x3e, 0x40));
+
+    assert!(!Util::has_borrow(0x3e, 0xf));
   }
 }

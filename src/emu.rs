@@ -288,7 +288,7 @@ impl Emu {
       0x16 => load_word_to_reg!(reg_d, self),
       // 0x17 | RLA | 1 | 4 | 0 0 0 C
       0x17 => {
-        let old_carry = if self.cpu.flag_carry() { 1 } else { 0 };
+        let old_carry = self.cpu.flag_carry().as_bit();
         self.cpu.set_flag_carry(bitn!(self.cpu.reg_a, 0x7));
 
         self.cpu.reg_a = (self.cpu.reg_a << 1) | old_carry;
@@ -576,21 +576,16 @@ impl Emu {
       // 0x96 | SUB (HL) | 1 | 8 | Z 1 H C
       0x96 => {
         let acc = self.read_word(self.cpu.reg_hl(), false);
-        if !Util::has_half_borrow(self.cpu.reg_a, acc) {
-          self.cpu.set_flag_half_carry(0x1);
-        } else {
-          self.cpu.set_flag_half_carry(0x0);
-        }
-        if !Util::has_borrow(self.cpu.reg_a, acc) {
-          self.cpu.set_flag_carry(0x1);
-        } else {
-          self.cpu.set_flag_carry(0x0);
-        }
-
+        self
+          .cpu
+          .set_flag_half_carry(Util::has_half_borrow(self.cpu.reg_a, acc).as_bit());
+        self
+          .cpu
+          .set_flag_carry(Util::has_borrow(self.cpu.reg_a, acc).as_bit());
         self.cpu.reg_a = self.cpu.reg_a.wrapping_sub(acc);
 
         self.cpu.set_flag_zero_for(self.cpu.reg_a);
-        self.cpu.set_flag_add_sub(0x1);
+        self.cpu.set_flag_add_sub(0b1);
       }
       // 0x97 | SUB A | 1 | 4 | Z 1 H C
       0x97 => op_sub_reg_from_a!(self, reg_a),
@@ -801,21 +796,14 @@ impl Emu {
       // 0xfe | CP d8 | 2 | 8 | Z 1 H C
       0xfe => {
         let acc = self.read_opcode_word();
-        if !Util::has_half_borrow(self.cpu.reg_a, acc) {
-          self.cpu.set_flag_half_carry(0x1);
-        } else {
-          self.cpu.set_flag_half_carry(0x0);
-        }
-        if !Util::has_borrow(self.cpu.reg_a, acc) {
-          self.cpu.set_flag_carry(0x1);
-        } else {
-          self.cpu.set_flag_carry(0x0);
-        }
-
         self
           .cpu
-          .set_flag_zero(if self.cpu.reg_a == acc { 0x1 } else { 0x0 });
-        self.cpu.set_flag_add_sub(0x1);
+          .set_flag_half_carry(Util::has_half_borrow(self.cpu.reg_a, acc).as_bit());
+        self
+          .cpu
+          .set_flag_carry(Util::has_borrow(self.cpu.reg_a, acc).as_bit());
+        self.cpu.set_flag_zero((self.cpu.reg_a == acc).as_bit());
+        self.cpu.set_flag_add_sub(0b1);
       }
       // 0xff | RST 38H | 1 | 16 | - - - -
       0xff => unimplemented!("Opcode 0xff is not yet implemented"),

@@ -1,5 +1,3 @@
-use super::util::*;
-
 #[derive(Default)]
 pub struct Mem {
   mem: Vec<u8>,
@@ -19,14 +17,14 @@ impl Mem {
       0xff00...0xff4b | 0xff80...0xffff => {
         self.mem[addr as usize] = w;
       }
-      0xe000...0xfdff => {
-        self.mem[addr as usize] = w;
-        self.mem[(0xc000 + (addr - 0xe000)) as usize] = w;
-      }
-      0xc000...0xddff => {
-        self.mem[addr as usize] = w;
-        self.mem[(0xe000 + (addr - 0xc000)) as usize] = w;
-      }
+      // 0xe000...0xfdff => {
+      //   self.mem[addr as usize] = w;
+      //   self.mem[(0xc000 + (addr - 0xe000)) as usize] = w;
+      // }
+      // 0xc000...0xddff => {
+      //   self.mem[addr as usize] = w;
+      //   self.mem[(0xe000 + (addr - 0xc000)) as usize] = w;
+      // }
       _ => unimplemented!("Memory write to 0x{:x} is not implemented.", addr),
     };
   }
