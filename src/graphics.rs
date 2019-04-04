@@ -118,10 +118,16 @@ impl Graphics {
   }
 
   pub fn reset(&mut self) {
-    self.lcdc = 0x91;
+    // Not sure if this should be set even when reading the DMGROM. If it's on the Nintendo logo is loaded incorrectly
+    // due to vmem not being accessible.
+    // self.lcdc = 0x91;
     self.canvas.set_draw_color(Color::RGB(0, 0, 0));
     self.canvas.clear();
     self.canvas.present();
+  }
+
+  fn is_screen_on(&self) -> bool {
+    bitn!(self.lcdc, 0x7) == 0b1
   }
 
   pub fn write_word(&mut self, addr: u16, w: u8) {
@@ -130,7 +136,7 @@ impl Graphics {
 
     match addr {
       0x8000...0x9fff => {
-        if stat_mode != 0b11 {
+        if stat_mode != 0b11 || !self.is_screen_on() {
           self.vmem[(addr - 0x8000) as usize] = w;
         } else {
           debug!("VMEM write is ignored.");
@@ -189,6 +195,10 @@ impl Graphics {
   pub fn update(&mut self, cycles_prev: u64, cycles: u64) -> GraphicsUpdateResult {
     assert!(cycles_prev < cycles);
     let mut response = GraphicsUpdateResult::default();
+
+    if !self.is_screen_on() {
+      return response;
+    }
 
     self.mode_timer += cycles - cycles_prev;
 
