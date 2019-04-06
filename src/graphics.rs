@@ -144,7 +144,7 @@ impl Graphics {
       }
       0xfe00...0xfe9f => {
         // Sprite attribute table (OAM).
-        if stat_mode == 0b00 || stat_mode == 0b01 {
+        if stat_mode == 0b00 || stat_mode == 0b01 || !self.is_screen_on() {
           self.oam[addr as usize - 0xfe00] = w;
         } else {
           debug!("OAM write is ignored.");
@@ -167,7 +167,7 @@ impl Graphics {
     match addr {
       0xfe00...0xfe9f => {
         // Sprite attribute table (OAM).
-        if force_read || stat_mode == 0b00 || stat_mode == 0b01 {
+        if force_read || stat_mode == 0b00 || stat_mode == 0b01 || !self.is_screen_on() {
           self.oam[addr as usize - 0xfe00]
         } else {
           debug!("OAM read is ignored.");
@@ -175,7 +175,7 @@ impl Graphics {
         }
       }
       0x8000...0x9fff => {
-        if !force_read && stat_mode == 0b11 {
+        if !force_read && stat_mode == 0b11 && !self.is_screen_on() {
           debug!("VMEM read is ignored.");
           0xff
         } else {

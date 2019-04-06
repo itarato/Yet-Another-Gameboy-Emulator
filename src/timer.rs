@@ -31,16 +31,17 @@ impl Timer {
   pub fn update(&mut self, cycles_prev: u64, cycles: u64) -> TimerResult {
     let mut result: TimerResult = TimerResult::default();
 
-    if Util::did_tick_happened(cycles_prev, cycles, 16384) {
+    // "This register is incremented at rate of 16384H." -> 4194304 / 16384 = 256.
+    if Util::did_tick_happened(cycles_prev, cycles, 256) {
       self.div.wrapping_add(1);
     }
 
     if self.timer_enabled() {
       if match self.input_clock_select() {
-        InputClockSpeed::Hz4096 => Util::did_tick_happened(cycles_prev, cycles, 4096),
-        InputClockSpeed::Hz262144 => Util::did_tick_happened(cycles_prev, cycles, 262144),
-        InputClockSpeed::Hz65536 => Util::did_tick_happened(cycles_prev, cycles, 65536),
-        InputClockSpeed::Hz16384 => Util::did_tick_happened(cycles_prev, cycles, 16384),
+        InputClockSpeed::Hz4096 => Util::did_tick_happened(cycles_prev, cycles, 1024),
+        InputClockSpeed::Hz262144 => Util::did_tick_happened(cycles_prev, cycles, 16),
+        InputClockSpeed::Hz65536 => Util::did_tick_happened(cycles_prev, cycles, 64),
+        InputClockSpeed::Hz16384 => Util::did_tick_happened(cycles_prev, cycles, 256),
       } {
         if self.tima == 0xff {
           self.tima = self.tma;
