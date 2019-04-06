@@ -91,6 +91,7 @@ impl Graphics {
         160 * Graphics::scale() as u32,
         144 * Graphics::scale() as u32,
       )
+      .position(16, 64)
       .opengl()
       .build()
       .unwrap();
@@ -101,6 +102,7 @@ impl Graphics {
         256 * Graphics::scale() as u32,
         256 * Graphics::scale() as u32,
       )
+      .position(16 + 160 * Graphics::scale() as i32 + 16, 64)
       .opengl()
       .build()
       .unwrap();

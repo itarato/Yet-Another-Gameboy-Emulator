@@ -167,3 +167,17 @@ macro_rules! op_cp_with_a {
     $sel.cpu.set_flag_add_sub(0b1);
   }};
 }
+
+macro_rules! op_add_to_a {
+  ($sel:ident, $reg:ident) => {{
+    $sel
+      .cpu
+      .set_flag_half_carry((Util::has_half_carry($sel.cpu.reg_a, $sel.cpu.$reg)).as_bit());
+    $sel
+      .cpu
+      .set_flag_carry((Util::has_carry($sel.cpu.reg_a, $sel.cpu.$reg)).as_bit());
+    $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_add($sel.cpu.$reg);
+    $sel.cpu.set_flag_zero(($sel.cpu.reg_a == 0).as_bit());
+    $sel.cpu.reset_flag_add_sub();
+  }};
+}

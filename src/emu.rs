@@ -548,21 +548,32 @@ impl Emu {
       // 0x7f | LD A,A | 1 | 4 | - - - -
       0x7f => load_word_to_reg_from_reg!(reg_a, reg_a, self),
       // 0x80 | ADD A,B | 1 | 4 | Z 0 H C
-      0x80 => unimplemented!("Opcode 0x80 is not yet implemented"),
+      0x80 => op_add_to_a!(self, reg_b),
       // 0x81 | ADD A,C | 1 | 4 | Z 0 H C
-      0x81 => unimplemented!("Opcode 0x81 is not yet implemented"),
+      0x81 => op_add_to_a!(self, reg_c),
       // 0x82 | ADD A,D | 1 | 4 | Z 0 H C
-      0x82 => unimplemented!("Opcode 0x82 is not yet implemented"),
+      0x82 => op_add_to_a!(self, reg_d),
       // 0x83 | ADD A,E | 1 | 4 | Z 0 H C
-      0x83 => unimplemented!("Opcode 0x83 is not yet implemented"),
+      0x83 => op_add_to_a!(self, reg_e),
       // 0x84 | ADD A,H | 1 | 4 | Z 0 H C
-      0x84 => unimplemented!("Opcode 0x84 is not yet implemented"),
+      0x84 => op_add_to_a!(self, reg_h),
       // 0x85 | ADD A,L | 1 | 4 | Z 0 H C
-      0x85 => unimplemented!("Opcode 0x85 is not yet implemented"),
+      0x85 => op_add_to_a!(self, reg_l),
       // 0x86 | ADD A,(HL) | 1 | 8 | Z 0 H C
-      0x86 => unimplemented!("Opcode 0x86 is not yet implemented"),
+      0x86 => {
+        let acc = self.read_word(self.cpu.reg_hl(), false);
+        self
+          .cpu
+          .set_flag_half_carry((Util::has_half_carry(self.cpu.reg_a, acc)).as_bit());
+        self
+          .cpu
+          .set_flag_carry((Util::has_carry(self.cpu.reg_a, acc)).as_bit());
+        self.cpu.reg_a = self.cpu.reg_a.wrapping_add(acc);
+        self.cpu.set_flag_zero((self.cpu.reg_a == 0).as_bit());
+        self.cpu.reset_flag_add_sub();
+      }
       // 0x87 | ADD A,A | 1 | 4 | Z 0 H C
-      0x87 => unimplemented!("Opcode 0x87 is not yet implemented"),
+      0x87 => op_add_to_a!(self, reg_a),
       // 0x88 | ADC A,B | 1 | 4 | Z 0 H C
       0x88 => unimplemented!("Opcode 0x88 is not yet implemented"),
       // 0x89 | ADC A,C | 1 | 4 | Z 0 H C
@@ -684,7 +695,17 @@ impl Emu {
       // 0xbd | CP L | 1 | 4 | Z 1 H C
       0xbd => unimplemented!("Opcode 0xbd is not yet implemented"),
       // 0xbe | CP (HL) | 1 | 8 | Z 1 H C
-      0xbe => unimplemented!("Opcode 0xbe is not yet implemented"),
+      0xbe => {
+        let acc = self.read_word(self.cpu.reg_hl(), false);
+        self
+          .cpu
+          .set_flag_half_carry(Util::has_half_borrow(self.cpu.reg_a, acc).as_bit());
+        self
+          .cpu
+          .set_flag_carry(Util::has_borrow(self.cpu.reg_a, acc).as_bit());
+        self.cpu.set_flag_zero((self.cpu.reg_a == acc).as_bit());
+        self.cpu.set_flag_add_sub(0b1);
+      }
       // 0xbf | CP A | 1 | 4 | Z 1 H C
       0xbf => unimplemented!("Opcode 0xbf is not yet implemented"),
       // 0xc0 | RET NZ | 1 | 20/8 | - - - -
@@ -1367,10 +1388,10 @@ impl Emu {
 
     match addr {
       0x0000...0x00ff => {
-        if !self.internal_rom_disabled {
-          self.dmg_rom[addr as usize]
-        } else {
+        if self.internal_rom_disabled {
           self.rom[addr as usize]
+        } else {
+          self.dmg_rom[addr as usize]
         }
       }
       0x0100...0x7fff => self.rom[addr as usize],
@@ -1383,6 +1404,7 @@ impl Emu {
 
   fn write_word(&mut self, addr: u16, w: u8) {
     match addr {
+      0xff50 => self.internal_rom_disabled = true,
       0x8000...0x9fff => {
         // Video ram
         self.graphics.write_word(addr, w);
