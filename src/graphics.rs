@@ -1,9 +1,11 @@
+use super::cpu::*;
 use super::display_adapter::*;
 use super::util::*;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
-use sdl2::Sdl;
+use sdl2::ttf::Sdl2TtfContext;
+use sdl2::{ttf, Sdl};
 use std::rc::Rc;
 
 enum WindowTileMapDisplayRegion {
@@ -59,6 +61,7 @@ impl Point {
 #[derive(Debug, Default)]
 pub struct GraphicsUpdateResult {
   pub vblank_interrupt_generated: bool,
+  pub lcd_stat_interrupt_generated: bool,
 }
 
 pub struct Graphics {
@@ -67,6 +70,7 @@ pub struct Graphics {
   scy: u8,
   bgp: u8,
   ly_lcdc_y_coordinate: u8,
+  lyc: u8,
   display: ConsoleDisplay,
   mode_timer: u64,
   line: u8,
@@ -75,6 +79,7 @@ pub struct Graphics {
   oam: [u8; 0xa0],
   canvas: WindowCanvas,
   bg_debug_canvas: WindowCanvas,
+  ttf_context: Sdl2TtfContext,
 }
 
 impl Graphics {
@@ -108,12 +113,14 @@ impl Graphics {
       scy: 0,
       bgp: 0,
       ly_lcdc_y_coordinate: 0,
+      lyc: 0,
       display: Default::default(),
       mode_timer: 0,
       line: 0,
       stat: 0,
       canvas: window.into_canvas().build().unwrap(),
       bg_debug_canvas: debug_window.into_canvas().build().unwrap(),
+      ttf_context: ttf::init().unwrap(),
     }
   }
 
@@ -218,10 +225,6 @@ impl Graphics {
           // HERE DRAW LINE <self.line> from backstage.
           self.draw_hline(self.line);
 
-          if self.line == 0 {
-            self.update_debug_background_window();
-          }
-
           self.mode_timer = self.mode_timer % 688;
           self.set_stat_mode(0b00);
         }
@@ -232,6 +235,7 @@ impl Graphics {
           self.mode_timer = self.mode_timer % 816;
 
           self.line += 1;
+          self.ly_lcdc_y_coordinate = self.line;
 
           if self.line == 144 {
             // This was 143 but seems we need all 0-143 to be accessible in state 0b11.
@@ -249,10 +253,15 @@ impl Graphics {
           // Vertical blank.
           self.mode_timer = self.mode_timer % 18240;
           self.line = 0;
+          self.ly_lcdc_y_coordinate = 0;
           self.set_stat_mode(0b10);
         }
       }
       mode @ _ => panic!("Illegal LCDC mode: 0b{:b}", mode),
+    }
+
+    if self.ly_lcdc_y_coordinate == self.lyc {
+      response.lcd_stat_interrupt_generated = true;
     }
 
     response
@@ -305,7 +314,8 @@ impl Graphics {
     self.canvas.present();
   }
 
-  pub fn update_debug_background_window(&mut self) {
+  // @TODO Move this to debugger.
+  pub fn update_debug_background_window(&mut self, iteration_count: u64, cpu: &Cpu) {
     self.bg_debug_canvas.set_draw_color(Color::RGB(0, 0, 0));
     self.bg_debug_canvas.clear();
 
@@ -343,23 +353,68 @@ impl Graphics {
             ));
           }
         }
-
-        // Checker background.
-        // if (row + col) % 2 == 1 {
-        //   self
-        //     .bg_debug_canvas
-        //     .set_draw_color(Color::RGBA(240, 240, 240, 10));
-        //   let _ = self.bg_debug_canvas.fill_rect(Rect::new(
-        //     (orig_x * Graphics::scale()) as i32,
-        //     (orig_y * Graphics::scale()) as i32,
-        //     Graphics::scale() as u32 * 8,
-        //     Graphics::scale() as u32 * 8,
-        //   ));
-        // }
       }
     }
 
+    self.render_text(format!("#{:0>16?}", iteration_count), 0);
+    self.render_text(
+      format!(
+        "A: 0x{:0>2x?} F: 0x{:0>2x?} Z{:?} N{:?} H{:?} C{:?}",
+        cpu.reg_a,
+        cpu.reg_f,
+        bitn!(cpu.reg_f, 7),
+        bitn!(cpu.reg_f, 6),
+        bitn!(cpu.reg_f, 5),
+        bitn!(cpu.reg_f, 4)
+      ),
+      16,
+    );
+    self.render_text(
+      format!("B: 0x{:0>2x?} C: 0x{:0>2x?}", cpu.reg_b, cpu.reg_c),
+      32,
+    );
+    self.render_text(
+      format!("D: 0x{:0>2x?} E: 0x{:0>2x?}", cpu.reg_d, cpu.reg_e),
+      48,
+    );
+    self.render_text(
+      format!("H: 0x{:0>2x?} L: 0x{:0>2x?}", cpu.reg_h, cpu.reg_l),
+      64,
+    );
+    self.render_text(format!("SP: 0x{:0>4x} PC: 0x{:0>4x}", cpu.sp, cpu.pc), 80);
+    self.render_text(format!("LCDC 0b{:0>8b}", self.lcdc), 96);
+
     self.bg_debug_canvas.present();
+  }
+
+  fn render_text(&mut self, text: String, offs_y: i32) {
+    let mut font = self
+      .ttf_context
+      .load_font(
+        "C:\\Users\\itarato\\Downloads\\DroidFamily\\DroidFonts\\DroidSansMono.ttf",
+        12,
+      )
+      .unwrap();
+    font.set_style(ttf::FontStyle::BOLD);
+
+    let surface = font
+      .render(text.as_ref())
+      .solid(Color::RGB(64, 96, 192))
+      .unwrap();
+
+    let texture_creator = self.bg_debug_canvas.texture_creator();
+    let texture = texture_creator
+      .create_texture_from_surface(surface)
+      .unwrap();
+
+    let sdl2::render::TextureQuery { width, height, .. } = texture.query();
+
+    let target = sdl2::rect::Rect::new(4, offs_y, width, height);
+
+    self
+      .bg_debug_canvas
+      .copy(&texture, None, Some(target))
+      .unwrap();
   }
 
   fn color_bit_to_color(&self, bitmask: u8) -> GdbColor {
@@ -469,3 +524,11 @@ impl Graphics {
     2
   }
 }
+
+// impl Drop for Graphics {
+//   fn drop(&mut self) {
+//     unsafe {
+//       ttf::TTF_Quit();
+//     }
+//   }
+// }

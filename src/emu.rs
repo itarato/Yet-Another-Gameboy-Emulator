@@ -87,6 +87,7 @@ pub struct Emu {
   interrupts_enabled_new_value: bool,
   internal_rom_disabled: bool,
   sdl: Rc<Sdl>,
+  iteration_count: u64,
 }
 
 impl Emu {
@@ -108,6 +109,7 @@ impl Emu {
       interrupts_enabled_new_value: false,
       internal_rom_disabled: false,
       sdl: sdl.clone(),
+      iteration_count: 0u64,
     };
 
     emu.reset();
@@ -143,6 +145,14 @@ impl Emu {
 
       cycles_prev = self.cycles;
       self.interrupts_enabled = self.interrupts_enabled_new_value;
+
+      if self.iteration_count & 0xfff == 0 {
+        self
+          .graphics
+          .update_debug_background_window(self.iteration_count, &self.cpu);
+      }
+
+      self.iteration_count += 1;
     }
   }
 
@@ -159,7 +169,9 @@ impl Emu {
       DebuggerCommand::Breakpoint => { /* keep it stopped */ }
       DebuggerCommand::Continue | DebuggerCommand::Next => return,
       DebuggerCommand::Display => self.graphics.draw_display(),
-      DebuggerCommand::PrintBackgroundMap => self.graphics.update_debug_background_window(),
+      DebuggerCommand::PrintBackgroundMap => self
+        .graphics
+        .update_debug_background_window(self.iteration_count, &self.cpu),
       _ => {}
     };
 
@@ -213,8 +225,14 @@ impl Emu {
 
   fn handle_graphics(&mut self, cycles_prev: u64) {
     let response = self.graphics.update(cycles_prev, self.cycles);
+
     if response.vblank_interrupt_generated {
       let new_interrupts = Util::setbit(self.read_word(0xff0f, false), 0, 0x1);
+      self.write_word(0xff0f, new_interrupts);
+    }
+
+    if response.lcd_stat_interrupt_generated {
+      let new_interrupts = Util::setbit(self.read_word(0xff0f, false), 1, 0x1);
       self.write_word(0xff0f, new_interrupts);
     }
   }
