@@ -167,7 +167,12 @@ impl Emu {
       }
       DebuggerCommand::CpuPrint => self.cpu.registers_debug_print(),
       DebuggerCommand::Breakpoint => { /* keep it stopped */ }
-      DebuggerCommand::Continue | DebuggerCommand::Next => return,
+      DebuggerCommand::Continue | DebuggerCommand::Next => {
+        self
+          .graphics
+          .update_debug_background_window(self.iteration_count, &self.cpu);
+        return;
+      }
       DebuggerCommand::Display => self.graphics.draw_display(),
       DebuggerCommand::PrintBackgroundMap => self
         .graphics
@@ -339,7 +344,7 @@ impl Emu {
       0x20 => {
         let offs = self.read_opcode_word() as i8;
         if !self.cpu.flag_zero() {
-          self.cpu.pc = (self.cpu.pc as i32 + offs as i32) as u16;
+          self.cpu.pc = (self.cpu.pc as i16 + offs as i16) as u16;
         } else {
           is_cycle_alternative = true;
         }

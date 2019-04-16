@@ -251,11 +251,14 @@ impl Graphics {
         }
       }
       0b01 => {
+        self.line = 144 + (self.mode_timer / 1824) as u8;
+        self.ly_lcdc_y_coordinate = self.line;
+
         if self.mode_timer >= 18240 {
           // Vertical blank.
           self.mode_timer = self.mode_timer % 18240;
           self.line = 0;
-          self.ly_lcdc_y_coordinate = 0;
+          self.ly_lcdc_y_coordinate = self.line;
           self.set_stat_mode(0b10);
         }
       }
