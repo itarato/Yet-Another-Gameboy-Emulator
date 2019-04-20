@@ -177,6 +177,16 @@ impl Debugger {
       }
     }
 
+    self
+      .bg_debug_canvas
+      .set_draw_color(Color::RGBA(0, 200, 0, 100));
+    self.bg_debug_canvas.draw_rect(Rect::new(
+      graphics.scx as i32 * Debugger::scale() as i32,
+      graphics.scy as i32 * Debugger::scale() as i32,
+      160 * Debugger::scale() as u32,
+      144 * Debugger::scale() as u32,
+    ));
+
     self.render_text(format!("#{:0>16?}", iteration_count), 0);
     self.render_text(
       format!(

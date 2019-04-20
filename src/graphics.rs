@@ -64,8 +64,8 @@ pub struct GraphicsUpdateResult {
 
 pub struct Graphics {
   pub lcdc: u8,
-  scx: u8,
-  scy: u8,
+  pub scx: u8,
+  pub scy: u8,
   bgp: u8,
   ly_lcdc_y_coordinate: u8,
   lyc: u8,
