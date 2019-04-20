@@ -214,8 +214,8 @@ impl Graphics {
     match self.stat_mode() {
       0b10 => {
         // Accessing OAM.
-        if self.mode_timer >= 320 {
-          self.mode_timer = self.mode_timer % 320;
+        if self.mode_timer >= 80 {
+          self.mode_timer = self.mode_timer % 80;
           self.set_stat_mode(0b11);
         }
       }
@@ -223,18 +223,18 @@ impl Graphics {
         // Accessing VRAM.
         // TODO  mode 3 about 170-240 tstates depending on where exactly the sprites, window, and fine scroll (SCX modulo 8) are positioned
         // !!! Draw should happen here !!!
-        if self.mode_timer >= 688 {
+        if self.mode_timer >= 172 {
           // HERE DRAW LINE <self.line> from backstage.
           self.draw_hline(self.line);
 
-          self.mode_timer = self.mode_timer % 688;
+          self.mode_timer = self.mode_timer % 172;
           self.set_stat_mode(0b00);
         }
       }
       0b00 => {
         // Horizontal blank.
-        if self.mode_timer >= 816 {
-          self.mode_timer = self.mode_timer % 816;
+        if self.mode_timer >= 204 {
+          self.mode_timer = self.mode_timer % 204;
 
           self.line += 1;
           self.ly_lcdc_y_coordinate = self.line;
@@ -251,12 +251,12 @@ impl Graphics {
         }
       }
       0b01 => {
-        self.line = 144 + (self.mode_timer / 1824) as u8;
+        self.line = 144 + (self.mode_timer / 456) as u8;
         self.ly_lcdc_y_coordinate = self.line;
 
-        if self.mode_timer >= 18240 {
+        if self.mode_timer >= 4560 {
           // Vertical blank.
-          self.mode_timer = self.mode_timer % 18240;
+          self.mode_timer = self.mode_timer % 4560;
           self.line = 0;
           self.ly_lcdc_y_coordinate = self.line;
           self.set_stat_mode(0b10);
