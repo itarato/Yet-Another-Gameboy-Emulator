@@ -1,24 +1,22 @@
 use super::cpu::*;
 use super::display_adapter::*;
-use super::util::*;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
-use sdl2::ttf::Sdl2TtfContext;
-use sdl2::{ttf, Sdl};
+use sdl2::Sdl;
 use std::rc::Rc;
 
-enum WindowTileMapDisplayRegion {
+pub enum WindowTileMapDisplayRegion {
   Region_0x9800_0x9BFF,
   Region_0x9C00_0x9FFF,
 }
 
-enum BackgroundAndWindowTileDataRegion {
+pub enum BackgroundAndWindowTileDataRegion {
   Region_0x8800_0x97FF,
   Region_0x8000_0x8FFF,
 }
 
-enum BackgroundTileMapDisplayRegion {
+pub enum BackgroundTileMapDisplayRegion {
   Region_0x9800_0x9BFF,
   Region_0x9C00_0x9FFF,
 }
@@ -28,7 +26,7 @@ enum ObjectSpriteSize {
   Size8x16,
 }
 
-enum GdbColor {
+pub enum GdbColor {
   C0,
   C1,
   C2,
@@ -36,7 +34,7 @@ enum GdbColor {
 }
 
 impl GdbColor {
-  fn as_sdl_color(&self) -> Color {
+  pub fn as_sdl_color(&self) -> Color {
     match self {
       GdbColor::C3 => Color::RGB(0, 0, 0),
       GdbColor::C2 => Color::RGB(85, 85, 85),
@@ -65,7 +63,7 @@ pub struct GraphicsUpdateResult {
 }
 
 pub struct Graphics {
-  lcdc: u8,
+  pub lcdc: u8,
   scx: u8,
   scy: u8,
   bgp: u8,
@@ -75,11 +73,9 @@ pub struct Graphics {
   mode_timer: u64,
   line: u8,
   stat: u8,
-  vmem: [u8; 0x2000],
+  pub vmem: [u8; 0x2000],
   oam: [u8; 0xa0],
   canvas: WindowCanvas,
-  bg_debug_canvas: WindowCanvas,
-  ttf_context: Sdl2TtfContext,
 }
 
 impl Graphics {
@@ -92,17 +88,6 @@ impl Graphics {
         144 * Graphics::scale() as u32,
       )
       .position(16, 64)
-      .opengl()
-      .build()
-      .unwrap();
-
-    let debug_window = video_subsystem
-      .window(
-        "Y.A.G.B.E. BACKGROUND DEBUG",
-        256 * Graphics::scale() as u32,
-        256 * Graphics::scale() as u32,
-      )
-      .position(16 + 160 * Graphics::scale() as i32 + 16, 64)
       .opengl()
       .build()
       .unwrap();
@@ -121,8 +106,6 @@ impl Graphics {
       line: 0,
       stat: 0,
       canvas: window.into_canvas().build().unwrap(),
-      bg_debug_canvas: debug_window.into_canvas().build().unwrap(),
-      ttf_context: ttf::init().unwrap(),
     }
   }
 
@@ -319,110 +302,7 @@ impl Graphics {
     self.canvas.present();
   }
 
-  // @TODO Move this to debugger.
-  pub fn update_debug_background_window(&mut self, iteration_count: u64, cpu: &Cpu) {
-    self.bg_debug_canvas.set_draw_color(Color::RGB(0, 0, 0));
-    self.bg_debug_canvas.clear();
-
-    // Background.
-    for row in 0..32 {
-      let orig_y = row * 8;
-
-      for col in 0..32 {
-        let orig_x = col * 8;
-        let tile_idx = row * 32 + col;
-
-        let tile_offs: usize = match self.background_tile_map_display_select() {
-          BackgroundTileMapDisplayRegion::Region_0x9800_0x9BFF => 0x9800 + tile_idx - 0x8000,
-          BackgroundTileMapDisplayRegion::Region_0x9C00_0x9FFF => 0x9c00 + tile_idx - 0x8000,
-        };
-        let map_region_start: usize = match self.background_and_window_tile_data_select() {
-          BackgroundAndWindowTileDataRegion::Region_0x8000_0x8FFF => 0x8000 - 0x8000,
-          BackgroundAndWindowTileDataRegion::Region_0x8800_0x97FF => 0x8800 - 0x8000,
-        };
-        let tile_block_size = 0x10;
-        let tile_addr: usize = map_region_start + (self.vmem[tile_offs] as usize * tile_block_size);
-
-        for iy in 0..8 {
-          for ix in 0..8 {
-            let color_bit_hi = (self.vmem[tile_addr + (iy * 2)] >> (7 - ix)) & 1;
-            let color_bit_lo = (self.vmem[tile_addr + (iy * 2) + 1] >> (7 - ix)) & 1;
-            let color_code = (color_bit_hi << 1) | color_bit_lo;
-            let color = self.color_bit_to_color(color_code);
-            self.bg_debug_canvas.set_draw_color(color.as_sdl_color());
-            let _ = self.bg_debug_canvas.fill_rect(Rect::new(
-              ((orig_x + ix) * Graphics::scale()) as i32,
-              ((orig_y + iy) * Graphics::scale()) as i32,
-              Graphics::scale() as u32,
-              Graphics::scale() as u32,
-            ));
-          }
-        }
-      }
-    }
-
-    self.render_text(format!("#{:0>16?}", iteration_count), 0);
-    self.render_text(
-      format!(
-        "A: 0x{:0>2x?} F: 0x{:0>2x?} Z{:?} N{:?} H{:?} C{:?}",
-        cpu.reg_a,
-        cpu.reg_f,
-        bitn!(cpu.reg_f, 7),
-        bitn!(cpu.reg_f, 6),
-        bitn!(cpu.reg_f, 5),
-        bitn!(cpu.reg_f, 4)
-      ),
-      16,
-    );
-    self.render_text(
-      format!("B: 0x{:0>2x?} C: 0x{:0>2x?}", cpu.reg_b, cpu.reg_c),
-      32,
-    );
-    self.render_text(
-      format!("D: 0x{:0>2x?} E: 0x{:0>2x?}", cpu.reg_d, cpu.reg_e),
-      48,
-    );
-    self.render_text(
-      format!("H: 0x{:0>2x?} L: 0x{:0>2x?}", cpu.reg_h, cpu.reg_l),
-      64,
-    );
-    self.render_text(format!("SP: 0x{:0>4x} PC: 0x{:0>4x}", cpu.sp, cpu.pc), 80);
-    self.render_text(format!("LCDC 0b{:0>8b}", self.lcdc), 96);
-
-    self.bg_debug_canvas.present();
-  }
-
-  fn render_text(&mut self, text: String, offs_y: i32) {
-    let mut font = self
-      .ttf_context
-      .load_font(
-        "C:\\Users\\itarato\\Downloads\\DroidFamily\\DroidFonts\\DroidSansMono.ttf",
-        12,
-      )
-      .unwrap();
-    font.set_style(ttf::FontStyle::BOLD);
-
-    let surface = font
-      .render(text.as_ref())
-      .solid(Color::RGB(64, 96, 192))
-      .unwrap();
-
-    let texture_creator = self.bg_debug_canvas.texture_creator();
-    let texture = texture_creator
-      .create_texture_from_surface(surface)
-      .unwrap();
-
-    let sdl2::render::TextureQuery { width, height, .. } = texture.query();
-
-    let target = sdl2::rect::Rect::new(4, offs_y, width, height);
-
-    self
-      .bg_debug_canvas
-      .copy(&texture, None, Some(target))
-      .unwrap();
-  }
-
-  fn color_bit_to_color(&self, bitmask: u8) -> GdbColor {
+  pub fn color_bit_to_color(&self, bitmask: u8) -> GdbColor {
     match bitmask {
       0b00 => GdbColor::C0,
       0b01 => GdbColor::C1,
@@ -461,7 +341,11 @@ impl Graphics {
     }
   }
 
-  fn window_tile_map_display_select(&self) -> WindowTileMapDisplayRegion {
+  fn is_window_display_enabled(&self) -> bool {
+    bitn!(self.lcdc, 5) == 0x1
+  }
+
+  pub fn window_tile_map_display_select(&self) -> WindowTileMapDisplayRegion {
     if bitn!(self.lcdc, 6) == 0x0 {
       WindowTileMapDisplayRegion::Region_0x9800_0x9BFF
     } else {
@@ -469,11 +353,7 @@ impl Graphics {
     }
   }
 
-  fn is_window_display_enabled(&self) -> bool {
-    bitn!(self.lcdc, 5) == 0x1
-  }
-
-  fn background_and_window_tile_data_select(&self) -> BackgroundAndWindowTileDataRegion {
+  pub fn background_and_window_tile_data_select(&self) -> BackgroundAndWindowTileDataRegion {
     if bitn!(self.lcdc, 4) == 0x0 {
       BackgroundAndWindowTileDataRegion::Region_0x8800_0x97FF
     } else {
@@ -481,7 +361,7 @@ impl Graphics {
     }
   }
 
-  fn background_tile_map_display_select(&self) -> BackgroundTileMapDisplayRegion {
+  pub fn background_tile_map_display_select(&self) -> BackgroundTileMapDisplayRegion {
     if bitn!(self.lcdc, 3) == 0x0 {
       BackgroundTileMapDisplayRegion::Region_0x9800_0x9BFF
     } else {

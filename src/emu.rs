@@ -119,7 +119,7 @@ impl Emu {
   }
 
   pub fn enable_debug_mode(&mut self) {
-    self.debugger = Some(Debugger::new());
+    self.debugger = Some(Debugger::new(self.sdl.clone()));
   }
 
   pub fn run(&mut self) {
@@ -147,9 +147,9 @@ impl Emu {
       self.interrupts_enabled = self.interrupts_enabled_new_value;
 
       if self.iteration_count & 0xfff == 0 {
-        self
-          .graphics
-          .update_debug_background_window(self.iteration_count, &self.cpu);
+        if let Some(dbgr) = self.debugger.as_mut() {
+          dbgr.update_debug_background_window(self.iteration_count, &self.cpu, &self.graphics);
+        }
       }
 
       self.iteration_count += 1;
@@ -157,7 +157,8 @@ impl Emu {
   }
 
   fn operate_debugger(&mut self) {
-    match self.debugger.as_mut().unwrap().read_command() {
+    let command = self.debugger.as_mut().unwrap().read_command();
+    match command {
       DebuggerCommand::Quit => {
         self.halted = true;
         return;
@@ -169,14 +170,20 @@ impl Emu {
       DebuggerCommand::Breakpoint => { /* keep it stopped */ }
       DebuggerCommand::Continue | DebuggerCommand::Next => {
         self
-          .graphics
-          .update_debug_background_window(self.iteration_count, &self.cpu);
+          .debugger
+          .as_mut()
+          .unwrap()
+          .update_debug_background_window(self.iteration_count, &self.cpu, &self.graphics);
         return;
       }
       DebuggerCommand::Display => self.graphics.draw_display(),
-      DebuggerCommand::PrintBackgroundMap => self
-        .graphics
-        .update_debug_background_window(self.iteration_count, &self.cpu),
+      DebuggerCommand::PrintBackgroundMap => {
+        self
+          .debugger
+          .as_mut()
+          .unwrap()
+          .update_debug_background_window(self.iteration_count, &self.cpu, &self.graphics);
+      }
       _ => {}
     };
 
