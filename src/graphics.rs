@@ -224,6 +224,8 @@ impl Graphics {
 
           if self.line == 144 {
             // This was 143 but seems we need all 0-143 to be accessible in state 0b11.
+            self.canvas.present();
+
             self.set_stat_mode(0b01);
             // TODO Possibly do something on screen .. http://imrannazar.com/GameBoy-Emulation-in-JavaScript:-GPU-Timings
             // Possibly not.
@@ -298,8 +300,6 @@ impl Graphics {
         self.set_pixel(color, Point::new((virt_x + i) as usize, line as usize));
       }
     }
-
-    self.canvas.present();
   }
 
   pub fn color_bit_to_color(&self, bitmask: u8) -> GdbColor {
