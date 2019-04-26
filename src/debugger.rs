@@ -25,7 +25,6 @@ pub enum DebuggerCommand {
 pub struct Debugger {
   breakpoints: HashSet<u16>,
   next_count: Option<usize>,
-  sdl: Rc<Sdl>,
   bg_debug_canvas: WindowCanvas,
   ttf_context: Sdl2TtfContext,
 }
@@ -47,7 +46,6 @@ impl Debugger {
     let mut debugger: Debugger = Debugger {
       breakpoints: HashSet::new(),
       next_count: None,
-      sdl,
       bg_debug_canvas: debug_window.into_canvas().build().unwrap(),
       ttf_context: ttf::init().unwrap(),
     };
@@ -180,7 +178,7 @@ impl Debugger {
     self
       .bg_debug_canvas
       .set_draw_color(Color::RGBA(0, 200, 0, 100));
-    self.bg_debug_canvas.draw_rect(Rect::new(
+    let _ = self.bg_debug_canvas.draw_rect(Rect::new(
       graphics.scx as i32 * Debugger::scale() as i32,
       graphics.scy as i32 * Debugger::scale() as i32,
       160 * Debugger::scale() as u32,
@@ -221,10 +219,7 @@ impl Debugger {
   fn render_text(&mut self, text: String, offs_y: i32) {
     let mut font = self
       .ttf_context
-      .load_font(
-        "C:\\Users\\itarato\\Downloads\\DroidFamily\\DroidFonts\\DroidSansMono.ttf",
-        12,
-      )
+      .load_font("asset/DroidSansMono.ttf", 12)
       .unwrap();
     font.set_style(ttf::FontStyle::BOLD);
 
