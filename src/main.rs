@@ -25,8 +25,11 @@ fn main() {
   info!("Emulator start");
 
   let args: Vec<String> = env::args().collect();
+  if args.len() < 2 {
+    panic!("Missing argument. Call: cargo run -- CARTRIGE [--debug]");
+  }
 
-  let mut emu = Emu::new();
+  let mut emu = Emu::new(args[1].clone());
 
   if args.iter().find(|&arg| arg == "--debug").is_some() {
     emu.enable_debug_mode();

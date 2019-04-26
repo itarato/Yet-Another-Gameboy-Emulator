@@ -91,8 +91,12 @@ pub struct Emu {
 }
 
 impl Emu {
-  pub fn new() -> Emu {
+  pub fn new(rom_file: String) -> Emu {
     let sdl = Rc::new(sdl2::init().unwrap());
+
+    let mut rom = Vec::new();
+    let mut rom_file = File::open(rom_file).unwrap();
+    let _ = rom_file.read_to_end(&mut rom).unwrap();
 
     let mut emu: Emu = Emu {
       cpu: Cpu::default(),
@@ -104,7 +108,7 @@ impl Emu {
       cycles: 0u64,
       debugger: None,
       halted: false,
-      rom: Vec::new(),
+      rom,
       interrupts_enabled: false,
       interrupts_enabled_new_value: false,
       internal_rom_disabled: false,
@@ -114,7 +118,6 @@ impl Emu {
 
     emu.reset();
     emu.read_dmg_rom();
-    emu.read_rom();
     emu
   }
 
@@ -1460,11 +1463,6 @@ impl Emu {
     let _ = rom_file.read_to_end(&mut self.dmg_rom).unwrap();
   }
 
-  fn read_rom(&mut self) {
-    let mut rom_file = File::open("asset/tetris.gb").unwrap();
-    let _ = rom_file.read_to_end(&mut self.rom).unwrap();
-  }
-
   pub fn push_word(&mut self, w: u8) {
     self.write_word(self.cpu.sp, w);
     self.cpu.sp -= 1;
@@ -1556,7 +1554,7 @@ impl Emu {
 
 #[test]
 fn test_stack() {
-  let mut emu = Emu::new();
+  let mut emu = Emu::new("".to_owned());
   emu.push_dword(0xabcd);
   assert_eq!(0xabcd, emu.pop_dword());
 }
