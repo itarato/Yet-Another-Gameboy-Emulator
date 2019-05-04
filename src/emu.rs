@@ -101,7 +101,7 @@ impl Emu {
     let mut emu: Emu = Emu {
       cpu: Cpu::default(),
       mem: Mem::default(),
-      sound: Sound::default(),
+      sound: Sound::new(sdl.clone()),
       graphics: Graphics::new(sdl.clone()),
       timer: Timer::default(),
       dmg_rom: Vec::new(),
