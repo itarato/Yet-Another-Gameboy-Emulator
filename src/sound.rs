@@ -203,7 +203,7 @@ impl Sound {
       *pocket = Some(SoundPacket::new(
         freq as f32,
         envelope as f32 / 15f32,
-        (22050 * envelope_steps as usize) / 64,
+        (44_100 * envelope_steps as usize) / 64,
         true,
         0.5,
       ));

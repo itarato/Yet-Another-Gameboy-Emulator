@@ -409,11 +409,3 @@ impl Graphics {
     2
   }
 }
-
-// impl Drop for Graphics {
-//   fn drop(&mut self) {
-//     unsafe {
-//       ttf::TTF_Quit();
-//     }
-//   }
-// }
