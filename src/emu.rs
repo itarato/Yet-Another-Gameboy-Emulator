@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::Read;
+use std::time::SystemTime;
 
 use super::cpu::*;
 use super::debugger::*;
@@ -128,12 +129,17 @@ impl Emu {
   pub fn run(&mut self) {
     let mut cycles_prev = 0u64;
     loop {
+      let t1 = SystemTime::now();
+
       if let Some(debugger) = self.debugger.as_mut() {
         let should_break = debugger.should_break(self.cpu.pc);
         if should_break {
           self.operate_debugger();
         }
       }
+
+      let t2 = SystemTime::now();
+      dbg!(t2.duration_since(t1));
 
       if self.halted {
         return;
@@ -143,8 +149,9 @@ impl Emu {
       self.read_instruction();
       self.handle_timer(cycles_prev);
       self.handle_graphics(cycles_prev);
-      self.handle_interrupts();
       self.handle_input_check();
+
+      self.handle_interrupts();
 
       cycles_prev = self.cycles;
       self.interrupts_enabled = self.interrupts_enabled_new_value;
