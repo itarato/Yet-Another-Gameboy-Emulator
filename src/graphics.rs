@@ -269,29 +269,35 @@ impl Graphics {
 
   fn draw_hline(&mut self, line: u8) {
     // Background.
-    let row = ((line as i32 + self.scy as i32) % 256) / 8;
-    let tile_line: i32 = (line as i32 + self.scy as i32) % 8;
+    let row = ((line as i32 + self.scy as i32) & 0xff) / 8;
+    let tile_line: i32 = (line as i32 + self.scy as i32) & 0b111;
+
+    let tile_offs_base: usize = match self.background_tile_map_display_select() {
+      BackgroundTileMapDisplayRegion::Region_0x9800_0x9BFF => 0x9800 - 0x8000,
+      BackgroundTileMapDisplayRegion::Region_0x9C00_0x9FFF => 0x9c00 - 0x8000,
+    };
+    let map_region_start: usize = match self.background_and_window_tile_data_select() {
+      BackgroundAndWindowTileDataRegion::Region_0x8000_0x8FFF => 0x8000 - 0x8000,
+      BackgroundAndWindowTileDataRegion::Region_0x8800_0x97FF => 0x8800 - 0x8000,
+    };
+
+    let tile_block_size = 0x10;
 
     for col in 0..32 {
-      let orig_x = col * 8;
-      let virt_x: i32 = (orig_x as i32 + 256 - self.scx as i32) % 256;
+      let orig_x = col << 3;
+      let virt_x: i32 = (orig_x as i32 + 256 - self.scx as i32) & 0xff;
 
       // The tile line would not be presented on the visible line scan.
       if virt_x >= 160 {
         continue;
       }
 
-      let tile_idx = row as usize * 32 + col;
-      let tile_offs: usize = match self.background_tile_map_display_select() {
-        BackgroundTileMapDisplayRegion::Region_0x9800_0x9BFF => 0x9800 + tile_idx - 0x8000,
-        BackgroundTileMapDisplayRegion::Region_0x9C00_0x9FFF => 0x9c00 + tile_idx - 0x8000,
-      };
-      let map_region_start: usize = match self.background_and_window_tile_data_select() {
-        BackgroundAndWindowTileDataRegion::Region_0x8000_0x8FFF => 0x8000 - 0x8000,
-        BackgroundAndWindowTileDataRegion::Region_0x8800_0x97FF => 0x8800 - 0x8000,
-      };
-      let tile_block_size = 0x10;
+      let tile_idx = ((row as usize) << 5) + col;
+      let tile_offs: usize = tile_offs_base + tile_idx;
       let tile_addr: usize = map_region_start + (self.vmem[tile_offs] as usize * tile_block_size);
+
+      let pixel_lo = self.vmem[tile_addr + ((tile_line as usize) << 1) + 1];
+      let pixel_hi = self.vmem[tile_addr + ((tile_line as usize) << 1)];
 
       for i in 0..8 {
         // Out of screen.
@@ -299,8 +305,8 @@ impl Graphics {
           continue;
         }
 
-        let color_bit_hi = (self.vmem[tile_addr + (tile_line as usize * 2)] >> (7 - i)) & 1;
-        let color_bit_lo = (self.vmem[tile_addr + (tile_line as usize * 2) + 1] >> (7 - i)) & 1;
+        let color_bit_hi = (pixel_hi >> (7 - i)) & 1;
+        let color_bit_lo = (pixel_lo >> (7 - i)) & 1;
         let color_code = (color_bit_hi << 1) | color_bit_lo;
         let color = self.color_bit_to_color(color_code);
         self.set_pixel(color, Point::new((virt_x + i) as usize, line as usize));
