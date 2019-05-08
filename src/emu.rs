@@ -1,6 +1,7 @@
+use sdl2::Sdl;
 use std::fs::File;
 use std::io::Read;
-use std::time::SystemTime;
+use std::rc::Rc;
 
 use super::cpu::*;
 use super::debugger::*;
@@ -9,9 +10,6 @@ use super::mem::*;
 use super::sound::*;
 use super::timer::*;
 use super::util::*;
-
-use sdl2::Sdl;
-use std::rc::Rc;
 
 #[rustfmt::skip]
 const OPCODE_DUR: [u8; 256] = [
@@ -129,17 +127,12 @@ impl Emu {
   pub fn run(&mut self) {
     let mut cycles_prev = 0u64;
     loop {
-      let t1 = SystemTime::now();
-
-      if let Some(debugger) = self.debugger.as_mut() {
-        let should_break = debugger.should_break(self.cpu.pc);
-        if should_break {
-          self.operate_debugger();
-        }
-      }
-
-      let t2 = SystemTime::now();
-      dbg!(t2.duration_since(t1));
+      // if let Some(debugger) = self.debugger.as_mut() {
+      //   let should_break = debugger.should_break(self.cpu.pc);
+      //   if should_break {
+      //     self.operate_debugger();
+      //   }
+      // }
 
       if self.halted {
         return;
@@ -156,11 +149,11 @@ impl Emu {
       cycles_prev = self.cycles;
       self.interrupts_enabled = self.interrupts_enabled_new_value;
 
-      if self.iteration_count & 0xfff == 0 {
-        if let Some(dbgr) = self.debugger.as_mut() {
-          dbgr.update_debug_background_window(self.iteration_count, &self.cpu, &self.graphics);
-        }
-      }
+      // if self.iteration_count & 0xfff == 0 {
+      //   if let Some(dbgr) = self.debugger.as_mut() {
+      //     dbgr.update_debug_background_window(self.iteration_count, &self.cpu, &self.graphics);
+      //   }
+      // }
 
       self.iteration_count += 1;
     }

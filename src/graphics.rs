@@ -1,10 +1,10 @@
-use super::cpu::*;
 use super::display_adapter::*;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
 use std::rc::Rc;
+use std::time::SystemTime;
 
 pub enum WindowTileMapDisplayRegion {
   Region_0x9800_0x9BFF,
@@ -76,6 +76,7 @@ pub struct Graphics {
   pub vmem: [u8; 0x2000],
   oam: [u8; 0xa0],
   canvas: WindowCanvas,
+  fps_timer: SystemTime,
 }
 
 impl Graphics {
@@ -106,6 +107,7 @@ impl Graphics {
       line: 0,
       stat: 0,
       canvas: window.into_canvas().build().unwrap(),
+      fps_timer: SystemTime::now(),
     }
   }
 
@@ -226,6 +228,14 @@ impl Graphics {
             // This was 143 but seems we need all 0-143 to be accessible in state 0b11.
             self.canvas.present();
 
+            let fps = 1000
+              / SystemTime::now()
+                .duration_since(self.fps_timer)
+                .unwrap()
+                .subsec_millis();
+            self.fps_timer = SystemTime::now();
+            dbg!(fps);
+
             self.set_stat_mode(0b01);
             // TODO Possibly do something on screen .. http://imrannazar.com/GameBoy-Emulation-in-JavaScript:-GPU-Timings
             // Possibly not.
@@ -258,10 +268,6 @@ impl Graphics {
   }
 
   fn draw_hline(&mut self, line: u8) {
-    for i in 0..160 {
-      self.clear_pixel(Point::new(i, line as usize));
-    }
-
     // Background.
     let row = ((line as i32 + self.scy as i32) % 256) / 8;
     let tile_line: i32 = (line as i32 + self.scy as i32) % 8;
