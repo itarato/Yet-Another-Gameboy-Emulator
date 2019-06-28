@@ -4,6 +4,7 @@ use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
 use sdl2::Sdl;
 use std::rc::Rc;
+use std::thread::sleep_ms;
 use std::time::SystemTime;
 
 pub enum WindowTileMapDisplayRegion {
@@ -67,6 +68,8 @@ pub struct Graphics {
   pub scx: u8,
   pub scy: u8,
   bgp: u8,
+  obp0: u8,
+  obp1: u8,
   ly_lcdc_y_coordinate: u8,
   lyc: u8,
   display: ConsoleDisplay,
@@ -100,6 +103,8 @@ impl Graphics {
       scx: 0,
       scy: 0,
       bgp: 0,
+      obp0: 0,
+      obp1: 0,
       ly_lcdc_y_coordinate: 0,
       lyc: 0,
       display: Default::default(),
@@ -150,6 +155,8 @@ impl Graphics {
       0xff43 => self.scx = w,
       0xff44 => self.ly_lcdc_y_coordinate = 0x0,
       0xff47 => self.bgp = w,
+      0xff48 => self.obp0 = w,
+      0xff49 => self.obp1 = w,
       _ => unimplemented!("Unknown graphics address: 0x{:>04x}", addr),
     };
   }
@@ -228,13 +235,17 @@ impl Graphics {
             // This was 143 but seems we need all 0-143 to be accessible in state 0b11.
             self.canvas.present();
 
-            let fps = 1000
-              / SystemTime::now()
-                .duration_since(self.fps_timer)
-                .unwrap()
-                .subsec_millis();
+            let timeframe = SystemTime::now()
+              .duration_since(self.fps_timer)
+              .unwrap()
+              .subsec_millis();
+            // let fps = 1000 / timeframe;
             self.fps_timer = SystemTime::now();
-            dbg!(fps);
+            // dbg!(timeframe);
+
+            if timeframe < 16 {
+              sleep_ms(16 - timeframe);
+            }
 
             self.set_stat_mode(0b01);
             // TODO Possibly do something on screen .. http://imrannazar.com/GameBoy-Emulation-in-JavaScript:-GPU-Timings

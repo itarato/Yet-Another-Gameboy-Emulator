@@ -13,6 +13,7 @@ pub mod emu;
 pub mod graphics;
 pub mod mem;
 pub mod sound;
+pub mod serial;
 pub mod timer;
 pub mod util;
 

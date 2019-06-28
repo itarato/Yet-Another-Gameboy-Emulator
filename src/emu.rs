@@ -7,9 +7,11 @@ use super::cpu::*;
 use super::debugger::*;
 use super::graphics::*;
 use super::mem::*;
+use super::serial::*;
 use super::sound::*;
 use super::timer::*;
 use super::util::*;
+
 
 #[rustfmt::skip]
 const OPCODE_DUR: [u8; 256] = [
@@ -77,6 +79,7 @@ pub struct Emu {
   pub sound: Sound,
   pub graphics: Graphics,
   pub timer: Timer,
+  pub serial: Serial,
   dmg_rom: Vec<u8>,
   pub cycles: u64, // = m-cycle (= 1/4 tstate / 1/4 clock)
   debugger: Option<Debugger>,
@@ -103,6 +106,7 @@ impl Emu {
       sound: Sound::new(sdl.clone()),
       graphics: Graphics::new(sdl.clone()),
       timer: Timer::default(),
+      serial: Serial::default(),
       dmg_rom: Vec::new(),
       cycles: 0u64,
       debugger: None,
@@ -127,12 +131,12 @@ impl Emu {
   pub fn run(&mut self) {
     let mut cycles_prev = 0u64;
     loop {
-      // if let Some(debugger) = self.debugger.as_mut() {
-      //   let should_break = debugger.should_break(self.cpu.pc);
-      //   if should_break {
-      //     self.operate_debugger();
-      //   }
-      // }
+      if let Some(debugger) = self.debugger.as_mut() {
+        let should_break = debugger.should_break(self.cpu.pc);
+        if should_break {
+          self.operate_debugger();
+        }
+      }
 
       if self.halted {
         return;
@@ -149,11 +153,11 @@ impl Emu {
       cycles_prev = self.cycles;
       self.interrupts_enabled = self.interrupts_enabled_new_value;
 
-      // if self.iteration_count & 0xfff == 0 {
-      //   if let Some(dbgr) = self.debugger.as_mut() {
-      //     dbgr.update_debug_background_window(self.iteration_count, &self.cpu, &self.graphics);
-      //   }
-      // }
+      if self.iteration_count & 0xfff == 0 {
+        if let Some(dbgr) = self.debugger.as_mut() {
+          dbgr.update_debug_background_window(self.iteration_count, &self.cpu, &self.graphics);
+        }
+      }
 
       self.iteration_count += 1;
     }
@@ -253,6 +257,12 @@ impl Emu {
   }
 
   fn handle_input_check(&mut self) {
+    // So far the event loop poll is the most expensive operation.
+    // It seems it's not important to poll events on every single instruction.
+    if self.iteration_count % 100 != 0 {
+      return;
+    }
+
     for event in self.sdl.event_pump().unwrap().poll_iter() {
       match event {
         sdl2::event::Event::Quit { .. } => self.halted = true,
@@ -415,7 +425,7 @@ impl Emu {
       // 0x35 | DEC (HL) | 1 | 12 | Z 1 H -
       0x35 => unimplemented!("Opcode 0x35 is not yet implemented"),
       // 0x36 | LD (HL),d8 | 2 | 12 | - - - -
-      0x36 => unimplemented!("Opcode 0x36 is not yet implemented"),
+      0x36 => load_word_to_reg_addr!(reg_h, reg_l, self),
       // 0x37 | SCF | 1 | 4 | - 0 0 1
       0x37 => unimplemented!("Opcode 0x37 is not yet implemented"),
       // 0x38 | JR C,r8 | 2 | 12/8 | - - - -
@@ -1419,10 +1429,16 @@ impl Emu {
 
   fn write_word(&mut self, addr: u16, w: u8) {
     match addr {
-      0xff50 => self.internal_rom_disabled = true,
+      0xff50 => dbg!(self.internal_rom_disabled = true),
       0x8000...0x9fff => {
         // Video ram
         self.graphics.write_word(addr, w);
+      }
+      0xa000...0xbfff => self.mem.write_word(addr, w),
+      0xc000...0xcfff => self.mem.write_word(addr, w),
+      0xd000...0xdfff => {
+        // In DMG this is non switchable.
+        self.mem.write_word(addr, w);
       }
       0xff80...0xffff => {
         // Internal ram
@@ -1431,6 +1447,8 @@ impl Emu {
       0xff00...0xff7f => {
         // i/o ports ---> THIS NEEDS SPECIAL CARE
         match addr {
+          0xff01 => self.serial.write_word(addr, w),
+          0xff02 => self.serial.write_word(addr, w),
           0xff0f => self.mem.write_word(addr, w),
           0xff10...0xff3f => self.sound.write_word(addr, w),
           0xff40...0xff6b => self.graphics.write_word(addr, w),
@@ -1439,9 +1457,10 @@ impl Emu {
       }
       _ => {
         unimplemented!(
-          "Write on unknown address: 0x{:x} the value: 0x{:x}",
+          "Write on unknown address: 0x{:x} the value: 0x{:x}\n{:#?}",
           addr,
-          w
+          w,
+          self.cpu
         );
       }
     }

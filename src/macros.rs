@@ -37,6 +37,14 @@ macro_rules! load_word_to_reg_addr_from_reg {
   }};
 }
 
+macro_rules! load_word_to_reg_addr {
+  ($addr_reg_hi:ident, $addr_reg_lo:ident, $sel:ident) => {{
+    let addr = dword!($sel.cpu.$addr_reg_hi, $sel.cpu.$addr_reg_lo);
+    let w = $sel.read_opcode_word();
+    $sel.write_word(addr, w);
+  }};
+}
+
 macro_rules! xor_reg {
   ($reg:ident, $sel:ident) => {{
     $sel.cpu.reg_a = $sel.cpu.reg_a ^ $sel.cpu.$reg;

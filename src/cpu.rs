@@ -1,6 +1,6 @@
 use super::util::*;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Cpu {
   pub reg_a: u8,
   pub reg_f: u8,
