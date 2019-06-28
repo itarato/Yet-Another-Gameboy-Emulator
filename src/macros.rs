@@ -55,6 +55,16 @@ macro_rules! xor_reg {
   }};
 }
 
+macro_rules! or_reg {
+  ($reg:ident, $sel:ident) => {{
+    $sel.cpu.reg_a = $sel.cpu.reg_a | $sel.cpu.$reg;
+    $sel.cpu.set_flag_zero_for($sel.cpu.reg_a);
+    $sel.cpu.reset_flag_add_sub();
+    $sel.cpu.reset_flag_half_carry();
+    $sel.cpu.reset_flag_carry();
+  }};
+}
+
 macro_rules! set_dword_register {
     ($fname:ident, $reg_hi:ident, $reg_lo:ident) => (
       pub fn $fname(&mut self, dw: u16) {

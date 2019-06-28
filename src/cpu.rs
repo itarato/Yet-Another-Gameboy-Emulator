@@ -66,7 +66,11 @@ impl Cpu {
     self.pc += 1;
 
     if self.pc >= 0x4000 {
-      unimplemented!("PC is out of standard rom bank space: 0x{:>04x}", self.pc);
+      unimplemented!(
+        "PC is out of standard rom bank space: 0x{:>04x}\n{:#x?}",
+        self.pc,
+        self
+      );
     }
 
     pc

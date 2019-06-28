@@ -85,6 +85,7 @@ pub struct Emu {
   debugger: Option<Debugger>,
   halted: bool,
   rom: Vec<u8>,
+  rom_bank_number: u8,
   interrupts_enabled: bool,
   interrupts_enabled_new_value: bool,
   internal_rom_disabled: bool,
@@ -112,6 +113,7 @@ impl Emu {
       debugger: None,
       halted: false,
       rom,
+      rom_bank_number: 1,
       interrupts_enabled: false,
       interrupts_enabled_new_value: false,
       internal_rom_disabled: false,
@@ -290,7 +292,7 @@ impl Emu {
       // 0x02 | LD (BC),A | 1 | 8 | - - - -
       0x02 => unimplemented!("Opcode 0x02 is not yet implemented"),
       // 0x03 | INC BC | 1 | 8 | - - - -
-      0x03 => unimplemented!("Opcode 0x03 is not yet implemented"),
+      0x03 => self.cpu.inc_bc(),
       // 0x04 | INC B | 1 | 4 | Z 0 H -
       0x04 => op_inc_reg!(self, reg_b),
       // 0x05 | DEC B | 1 | 4 | Z 1 H -
@@ -306,7 +308,7 @@ impl Emu {
       // 0x0a | LD A,(BC) | 1 | 8 | - - - -
       0x0a => load_word_to_reg_from_reg_addr!(reg_a, reg_b, reg_c, self),
       // 0x0b | DEC BC | 1 | 8 | - - - -
-      0x0b => unimplemented!("Opcode 0x0b is not yet implemented"),
+      0x0b => self.cpu.dec_bc(),
       // 0x0c | INC C | 1 | 4 | Z 0 H -
       0x0c => op_inc_reg!(self, reg_c),
       // 0x0d | DEC C | 1 | 4 | Z 1 H -
@@ -398,7 +400,10 @@ impl Emu {
       // 0x29 | ADD HL,HL | 1 | 8 | - 0 H C
       0x29 => unimplemented!("Opcode 0x29 is not yet implemented"),
       // 0x2a | LD A,(HL+) | 1 | 8 | - - - -
-      0x2a => unimplemented!("Opcode 0x2a is not yet implemented"),
+      0x2a => {
+        load_word_to_reg_from_reg_addr!(reg_a, reg_h, reg_l, self);
+        self.cpu.inc_hl();
+      }
       // 0x2b | DEC HL | 1 | 8 | - - - -
       0x2b => unimplemented!("Opcode 0x2b is not yet implemented"),
       // 0x2c | INC L | 1 | 4 | Z 0 H -
@@ -433,7 +438,10 @@ impl Emu {
       // 0x39 | ADD HL,SP | 1 | 8 | - 0 H C
       0x39 => unimplemented!("Opcode 0x39 is not yet implemented"),
       // 0x3a | LD A,(HL-) | 1 | 8 | - - - -
-      0x3a => unimplemented!("Opcode 0x3a is not yet implemented"),
+      0x3a => {
+        load_word_to_reg_from_reg_addr!(reg_a, reg_h, reg_l, self);
+        self.cpu.dec_hl();
+      }
       // 0x3b | DEC SP | 1 | 8 | - - - -
       0x3b => unimplemented!("Opcode 0x3b is not yet implemented"),
       // 0x3c | INC A | 1 | 4 | Z 0 H -
@@ -692,21 +700,21 @@ impl Emu {
       // 0xaf | XOR A | 1 | 4 | Z 0 0 0
       0xaf => xor_reg!(reg_a, self),
       // 0xb0 | OR B | 1 | 4 | Z 0 0 0
-      0xb0 => unimplemented!("Opcode 0xb0 is not yet implemented"),
+      0xb0 => or_reg!(reg_b, self),
       // 0xb1 | OR C | 1 | 4 | Z 0 0 0
-      0xb1 => unimplemented!("Opcode 0xb1 is not yet implemented"),
+      0xb1 => or_reg!(reg_c, self),
       // 0xb2 | OR D | 1 | 4 | Z 0 0 0
-      0xb2 => unimplemented!("Opcode 0xb2 is not yet implemented"),
+      0xb2 => or_reg!(reg_d, self),
       // 0xb3 | OR E | 1 | 4 | Z 0 0 0
-      0xb3 => unimplemented!("Opcode 0xb3 is not yet implemented"),
+      0xb3 => or_reg!(reg_e, self),
       // 0xb4 | OR H | 1 | 4 | Z 0 0 0
-      0xb4 => unimplemented!("Opcode 0xb4 is not yet implemented"),
+      0xb4 => or_reg!(reg_h, self),
       // 0xb5 | OR L | 1 | 4 | Z 0 0 0
-      0xb5 => unimplemented!("Opcode 0xb5 is not yet implemented"),
+      0xb5 => or_reg!(reg_l, self),
       // 0xb6 | OR (HL) | 1 | 8 | Z 0 0 0
       0xb6 => unimplemented!("Opcode 0xb6 is not yet implemented"),
       // 0xb7 | OR A | 1 | 4 | Z 0 0 0
-      0xb7 => unimplemented!("Opcode 0xb7 is not yet implemented"),
+      0xb7 => or_reg!(reg_a, self),
       // 0xb8 | CP B | 1 | 4 | Z 1 H C
       0xb8 => unimplemented!("Opcode 0xb8 is not yet implemented"),
       // 0xb9 | CP C | 1 | 4 | Z 1 H C
@@ -1412,14 +1420,22 @@ impl Emu {
     debug!("Read word from: 0x{:x}", addr);
 
     match addr {
-      0x0000...0x00ff => {
-        if self.internal_rom_disabled {
-          self.rom[addr as usize]
-        } else {
-          self.dmg_rom[addr as usize]
+      0x0000...0x3fff => match addr {
+        0x0000...0x00ff => {
+          if self.internal_rom_disabled {
+            self.rom[addr as usize]
+          } else {
+            self.dmg_rom[addr as usize]
+          }
+
         }
+        _ => self.rom[addr as usize],
+      },
+      0x4000...0x7fff => {
+        let calculated_rom_address: usize =
+          ((self.rom_bank_number().wrapping_sub(1) as u16 * 0x4000u16) + addr) as usize;
+        self.rom[calculated_rom_address]
       }
-      0x0100...0x7fff => self.rom[addr as usize],
       0xfe00...0xfe9f | 0x8000...0x9fff | 0xff40...0xff6a => {
         self.graphics.read_word(addr, force_read)
       }
@@ -1429,6 +1445,10 @@ impl Emu {
 
   fn write_word(&mut self, addr: u16, w: u8) {
     match addr {
+      0x2000...0x3fff => {
+        assert!(w <= 0x1f);
+        self.rom_bank_number = w;
+      }
       0xff50 => dbg!(self.internal_rom_disabled = true),
       0x8000...0x9fff => {
         // Video ram
@@ -1439,6 +1459,10 @@ impl Emu {
       0xd000...0xdfff => {
         // In DMG this is non switchable.
         self.mem.write_word(addr, w);
+      }
+      0xfe00...0xfe9f => self.graphics.write_word(addr, w),
+      0xfea0...0xfeff => {
+        dbg!("write to 0xfea0...0xfeff - bug???");
       }
       0xff80...0xffff => {
         // Internal ram
@@ -1452,12 +1476,13 @@ impl Emu {
           0xff0f => self.mem.write_word(addr, w),
           0xff10...0xff3f => self.sound.write_word(addr, w),
           0xff40...0xff6b => self.graphics.write_word(addr, w),
-          _ => unimplemented!("Unimplemented IO port: 0x{:>04x}", addr),
+          0xff7f => { /* seems a bug in tetris, let it go  */ }
+          _ => unimplemented!("Unimplemented IO port: 0x{:>04x}\n{:#x?}", addr, self.cpu),
         };
       }
       _ => {
         unimplemented!(
-          "Write on unknown address: 0x{:x} the value: 0x{:x}\n{:#?}",
+          "Write on unknown address: 0x{:x} the value: 0x{:x}\n{:#x?}",
           addr,
           w,
           self.cpu
@@ -1568,6 +1593,13 @@ impl Emu {
     }
 
     println!("");
+  }
+
+  fn rom_bank_number(&self) -> u8 {
+    match self.rom_bank_number {
+      0 => 1,
+      i => i,
+    }
   }
 }
 
