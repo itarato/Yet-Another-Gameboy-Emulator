@@ -11,9 +11,10 @@ pub mod debugger;
 pub mod display_adapter;
 pub mod emu;
 pub mod graphics;
+pub mod input;
 pub mod mem;
-pub mod sound;
 pub mod serial;
+pub mod sound;
 pub mod timer;
 pub mod util;
 

@@ -68,6 +68,8 @@ pub struct Graphics {
   pub lcdc: u8,
   pub scx: u8,
   pub scy: u8,
+  wy: u8,
+  wx: u8,
   bgp: u8,
   obp0: u8,
   obp1: u8,
@@ -103,6 +105,8 @@ impl Graphics {
       lcdc: 0,
       scx: 0,
       scy: 0,
+      wy: 0,
+      wx: 0,
       bgp: 0,
       obp0: 0,
       obp1: 0,
@@ -158,7 +162,9 @@ impl Graphics {
       0xff47 => self.bgp = w,
       0xff48 => self.obp0 = w,
       0xff49 => self.obp1 = w,
-      _ => unimplemented!("Unknown graphics address: 0x{:>04x}", addr),
+      0xff4a => self.wy = w,
+      0xff4b => self.wx = w,
+      _ => unimplemented!("Unknown video address: 0x{:>04x}", addr),
     };
   }
 

@@ -6,6 +6,7 @@ use std::rc::Rc;
 use super::cpu::*;
 use super::debugger::*;
 use super::graphics::*;
+use super::input::*;
 use super::mem::*;
 use super::serial::*;
 use super::sound::*;
@@ -80,6 +81,7 @@ pub struct Emu {
   pub graphics: Graphics,
   pub timer: Timer,
   pub serial: Serial,
+  pub input: Input,
   dmg_rom: Vec<u8>,
   pub cycles: u64, // = m-cycle (= 1/4 tstate / 1/4 clock)
   debugger: Option<Debugger>,
@@ -88,6 +90,7 @@ pub struct Emu {
   rom_bank_number: u8,
   interrupts_enabled: bool,
   interrupts_enabled_new_value: bool,
+  pre_interrupt_status: u8,
   internal_rom_disabled: bool,
   sdl: Rc<Sdl>,
   iteration_count: u64,
@@ -108,6 +111,7 @@ impl Emu {
       graphics: Graphics::new(sdl.clone()),
       timer: Timer::default(),
       serial: Serial::default(),
+      input: Input::default(),
       dmg_rom: Vec::new(),
       cycles: 0u64,
       debugger: None,
@@ -116,6 +120,7 @@ impl Emu {
       rom_bank_number: 1,
       interrupts_enabled: false,
       interrupts_enabled_new_value: false,
+      pre_interrupt_status: 0,
       internal_rom_disabled: false,
       sdl: sdl.clone(),
       iteration_count: 0u64,
@@ -209,6 +214,8 @@ impl Emu {
     // dbg!("INTERRUPT CHECK");
 
     if self.interrupt_enabled_v_blank() && self.interrupt_flag_v_blank() {
+      self.pre_interrupt_status = self.read_word(0xff0f, false);
+
       // Disable interrupts.
       self.interrupts_enabled = false;
 
@@ -787,7 +794,7 @@ impl Emu {
       0xc8 => {
         if self.cpu.flag_zero() {
           let addr = self.pop_dword();
-          dbg!(addr);
+          println!("RET: {:#x?} at {:#x?}", addr, self.cpu.pc);
           self.cpu.pc = addr;
         } else {
           is_cycle_alternative = true;
@@ -814,7 +821,10 @@ impl Emu {
       // 0xd0 | RET NC | 1 | 20/8 | - - - -
       0xd0 => unimplemented!("Opcode 0xd0 is not yet implemented"),
       // 0xd1 | POP DE | 1 | 12 | - - - -
-      0xd1 => unimplemented!("Opcode 0xd1 is not yet implemented"),
+      0xd1 => {
+        let dw = self.pop_dword();
+        self.cpu.set_de(dw);
+      }
       // 0xd2 | JP NC,a16 | 3 | 16/12 | - - - -
       0xd2 => unimplemented!("Opcode 0xd2 is not yet implemented"),
       // 0xd4 | CALL NC,a16 | 3 | 24/12 | - - - -
@@ -828,7 +838,13 @@ impl Emu {
       // 0xd8 | RET C | 1 | 20/8 | - - - -
       0xd8 => unimplemented!("Opcode 0xd8 is not yet implemented"),
       // 0xd9 | RETI | 1 | 16 | - - - -
-      0xd9 => unimplemented!("Opcode 0xd9 is not yet implemented"),
+      0xd9 => {
+        // panic!("{:#x?} {:#x?} {:#x?}", self.cpu, self.pre_interrupt_status, self.read_word(0xff0f, false));
+        // @TODO - Look into this why we get infinite loop. (BGB does not do anything.)
+        // self.write_word(0xff0f, self.pre_interrupt_status);
+        let addr = self.pop_dword();
+        self.cpu.pc = addr;
+      }
       // 0xda | JP C,a16 | 3 | 16/12 | - - - -
       0xda => unimplemented!("Opcode 0xda is not yet implemented"),
       // 0xdc | CALL C,a16 | 3 | 24/12 | - - - -
@@ -843,7 +859,10 @@ impl Emu {
         self.write_word(addr, self.cpu.reg_a);
       }
       // 0xe1 | POP HL | 1 | 12 | - - - -
-      0xe1 => unimplemented!("Opcode 0xe1 is not yet implemented"),
+      0xe1 => {
+        let dw = self.pop_dword();
+        self.cpu.set_hl(dw);
+      }
       // 0xe2 | LD (C),A | 2 | 8 | - - - -
       0xe2 => {
         let addr = 0xff00 | self.cpu.reg_c as u16;
@@ -874,7 +893,10 @@ impl Emu {
         self.cpu.reg_a = self.read_word(addr, false);
       }
       // 0xf1 | POP AF | 1 | 12 | Z N H C
-      0xf1 => unimplemented!("Opcode 0xf1 is not yet implemented"),
+      0xf1 => {
+        let dw = self.pop_dword();
+        self.cpu.set_af(dw);
+      }
       // 0xf2 | LD A,(C) | 2 | 8 | - - - -
       0xf2 => unimplemented!("Opcode 0xf2 is not yet implemented"),
       // 0xf3 | DI | 1 | 4 | - - - -
@@ -1499,8 +1521,10 @@ impl Emu {
       0xff00...0xff7f => {
         // i/o ports ---> THIS NEEDS SPECIAL CARE
         match addr {
+          0xff00 => self.input.write_word(addr, w),
           0xff01 => self.serial.write_word(addr, w),
           0xff02 => self.serial.write_word(addr, w),
+          0xff04...0xff07 => self.timer.write_word(addr, w),
           0xff0f => self.mem.write_word(addr, w),
           0xff10...0xff3f => self.sound.write_word(addr, w),
           0xff46 => {
