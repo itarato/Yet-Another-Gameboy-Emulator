@@ -1,5 +1,7 @@
 use super::cpu::*;
+use super::emu::*;
 use super::graphics::*;
+use super::util::*;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
@@ -20,6 +22,9 @@ pub enum DebuggerCommand {
   Quit,
   Display,
   PrintBackgroundMap,
+  History,
+  BackgroundOn,
+  BackgroundOff,
 }
 
 pub struct Debugger {
@@ -27,6 +32,8 @@ pub struct Debugger {
   next_count: Option<usize>,
   bg_debug_canvas: WindowCanvas,
   ttf_context: Sdl2TtfContext,
+  pc_history: History<u16>,
+  background_on: bool,
 }
 
 impl Debugger {
@@ -48,6 +55,8 @@ impl Debugger {
       next_count: None,
       bg_debug_canvas: debug_window.into_canvas().build().unwrap(),
       ttf_context: ttf::init().unwrap(),
+      pc_history: History::with_capacity(4),
+      background_on: false,
     };
     // Break at start.
     debugger.breakpoints.insert(0x0);
@@ -55,6 +64,8 @@ impl Debugger {
   }
 
   pub fn should_break(&mut self, pc: u16) -> bool {
+    self.pc_history.push(pc);
+
     if let Some(next_count) = self.next_count {
       if next_count == 1 {
         self.next_count = None;
@@ -116,7 +127,16 @@ impl Debugger {
         DebuggerCommand::MemoryPrint(addr, len)
       }
       "backgroundmap" | "bgmap" | "bgm" => DebuggerCommand::PrintBackgroundMap,
+      "background-on" | "bg-on" => {
+        self.background_on = true;
+        DebuggerCommand::BackgroundOn
+      }
+      "background-off" | "bg-off" => {
+        self.background_on = false;
+        DebuggerCommand::BackgroundOff
+      }
       "cpu" => DebuggerCommand::CpuPrint,
+      "history" | "h" => DebuggerCommand::History,
       "display" | "d" => DebuggerCommand::Display,
       "exit" | "e" | "quit" | "q" => DebuggerCommand::Quit,
       cmd @ _ => {
@@ -127,13 +147,16 @@ impl Debugger {
     }
   }
 
-  // @TODO Move this to debugger.
   pub fn update_debug_background_window(
     &mut self,
     iteration_count: u64,
     cpu: &Cpu,
     graphics: &Graphics,
   ) {
+    if !self.background_on {
+      return;
+    }
+
     self.bg_debug_canvas.set_draw_color(Color::RGB(0, 0, 0));
     self.bg_debug_canvas.clear();
 
@@ -243,7 +266,19 @@ impl Debugger {
       .unwrap();
   }
 
+  pub fn print_history(&self) {
+    println!("{:#x?}", self.pc_history.get());
+  }
+
   fn scale() -> usize {
     4usize
+  }
+
+  pub fn dump(&self, emu: &Emu) -> String {
+    format!(
+      "--- CPU\n{:#x?}\n--- PC LOG\n{:#x?}",
+      emu.cpu,
+      self.pc_history.get()
+    )
   }
 }

@@ -94,6 +94,18 @@ pub struct Sound {
   pub nr13: u8,
   pub nr14: u8,
 
+  nr21: u8,
+  nr22: u8,
+  nr23: u8,
+  nr24: u8,
+
+  nr30: bool,
+
+  nr41: u8,
+  nr42: u8,
+  nr43: u8,
+  nr44: u8,
+
   pub nr50: u8,
   pub nr51: u8,
   pub nr52: u8,
@@ -132,6 +144,18 @@ impl Sound {
       nr13: 0,
       nr14: 0,
 
+      nr21: 0,
+      nr22: 0,
+      nr23: 0,
+      nr24: 0,
+
+      nr30: false,
+
+      nr41: 0,
+      nr42: 0,
+      nr43: 0,
+      nr44: 0,
+
       nr50: 0,
       nr51: 0,
       nr52: 0,
@@ -155,6 +179,24 @@ impl Sound {
       0xff14 => {
         self.nr14 = w;
         self.handle_channel_1_out();
+      }
+
+      0xff16 => self.nr21 = w,
+      0xff17 => self.nr22 = w,
+      0xff18 => self.nr23 = w,
+      0xff19 => {
+        self.nr24 = w;
+        self.handle_channel_2_out();
+      }
+
+      0xff1a => self.nr30 = bitn!(w, 7) == 1,
+
+      0xff20 => self.nr41 = w,
+      0xff21 => self.nr42 = w,
+      0xff22 => self.nr43 = w,
+      0xff23 => {
+        self.nr44 = w;
+        self.handle_channel_4_out();
       }
 
       0xff24 => self.nr50 = w,
@@ -208,5 +250,13 @@ impl Sound {
         0.5,
       ));
     }
+  }
+
+  fn handle_channel_2_out(&self) {
+    // @TODO Implement.
+  }
+
+  fn handle_channel_4_out(&self) {
+    // @TODO Implement.
   }
 }

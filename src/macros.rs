@@ -30,6 +30,13 @@ macro_rules! load_word_to_reg_from_reg_addr {
   }};
 }
 
+macro_rules! load_word_to_reg_from_dword_addr {
+  ($reg_to:ident, $sel:ident) => {{
+    let addr = $sel.read_opcode_dword();
+    $sel.cpu.$reg_to = $sel.read_word(addr, false);
+  }};
+}
+
 macro_rules! load_word_to_reg_addr_from_reg {
   ($addr_reg_hi:ident, $addr_reg_lo:ident, $reg_from:ident, $sel:ident) => {{
     let addr = dword!($sel.cpu.$addr_reg_hi, $sel.cpu.$addr_reg_lo);
@@ -61,6 +68,16 @@ macro_rules! or_reg {
     $sel.cpu.set_flag_zero_for($sel.cpu.reg_a);
     $sel.cpu.reset_flag_add_sub();
     $sel.cpu.reset_flag_half_carry();
+    $sel.cpu.reset_flag_carry();
+  }};
+}
+
+macro_rules! and_reg {
+  ($reg:ident, $sel:ident) => {{
+    $sel.cpu.reg_a = $sel.cpu.reg_a & $sel.cpu.$reg;
+    $sel.cpu.set_flag_zero_for($sel.cpu.reg_a);
+    $sel.cpu.reset_flag_add_sub();
+    $sel.cpu.set_flag_half_carry(0x1);
     $sel.cpu.reset_flag_carry();
   }};
 }

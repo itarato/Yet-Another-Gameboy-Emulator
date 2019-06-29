@@ -44,6 +44,41 @@ impl Util {
   }
 }
 
+pub struct History<T: Default + Copy> {
+  history: Vec<T>,
+  ptr: usize,
+  capacity: usize,
+}
+
+impl<T: Default + Copy> History<T> {
+  pub fn with_capacity(capacity: usize) -> History<T> {
+    let mut history = Vec::with_capacity(capacity);
+    for _ in 0..capacity {
+      history.push(T::default());
+    }
+
+    History {
+      history,
+      ptr: 0,
+      capacity,
+    }
+  }
+
+  pub fn push(&mut self, e: T) {
+    self.history[self.ptr] = e;
+    self.ptr = (self.ptr + 1) % self.capacity;
+  }
+
+  pub fn get(&self) -> Vec<T> {
+    let mut out: Vec<T> = Vec::new();
+    for i in 0..self.capacity {
+      out.push(self.history[(self.ptr + i) % self.capacity]);
+    }
+    out.reverse();
+    out
+  }
+}
+
 pub trait BoolNumerics {
   fn as_bit(&self) -> u8;
 }
@@ -84,6 +119,7 @@ mod test {
     assert_eq!(0b1001_1011, Util::setbit(0b1001_1001, 1, 1));
     assert_eq!(0b0001_1001, Util::setbit(0b1001_1001, 7, 0));
     assert_eq!(0b1001_1001, Util::setbit(0b1001_1001, 7, 1));
+    assert_eq!(0b0000_0000, Util::setbit(0b0000_0001, 0, 0));
   }
 
   #[test]

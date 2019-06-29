@@ -193,6 +193,7 @@ impl Emu {
           .unwrap()
           .update_debug_background_window(self.iteration_count, &self.cpu, &self.graphics);
       }
+      DebuggerCommand::History => self.debugger.as_ref().unwrap().print_history(),
       _ => {}
     };
 
@@ -228,8 +229,11 @@ impl Emu {
       unimplemented!("<lcd_stat> interrupt has not been implemented.");
     } else if self.interrupt_enabled_timer() {
       unimplemented!("<timer> interrupt has not been implemented.");
-    } else if self.interrupt_enabled_serial() {
-      unimplemented!("<serial> interrupt has not been implemented.");
+    } else if self.interrupt_enabled_serial() && self.interrupt_flag_serial() {
+      unimplemented!(
+        "<serial> interrupt has not been implemented.\n{:?}",
+        self.debugger.as_ref().map(|dbgr| dbgr.dump(&self))
+      );
     } else if self.interrupt_enabled_joypad() {
       unimplemented!("<joypad> interrupt has not been implemented.");
     }
@@ -426,7 +430,16 @@ impl Emu {
       // 0x33 | INC SP | 1 | 8 | - - - -
       0x33 => unimplemented!("Opcode 0x33 is not yet implemented"),
       // 0x34 | INC (HL) | 1 | 12 | Z 0 H -
-      0x34 => unimplemented!("Opcode 0x34 is not yet implemented"),
+      0x34 => {
+        let w_orig = self.read_word(self.cpu.reg_hl(), false);
+        let w_new = w_orig.wrapping_add(1);
+        self.cpu.set_flag_zero((w_new == 0x0).as_bit());
+        self.cpu.reset_flag_add_sub();
+        self
+          .cpu
+          .set_flag_half_carry((Util::has_half_carry(w_orig, 1)).as_bit());
+        self.write_word(self.cpu.reg_hl(), w_new);
+      }
       // 0x35 | DEC (HL) | 1 | 12 | Z 1 H -
       0x35 => unimplemented!("Opcode 0x35 is not yet implemented"),
       // 0x36 | LD (HL),d8 | 2 | 12 | - - - -
@@ -668,21 +681,21 @@ impl Emu {
       // 0x9f | SBC A,A | 1 | 4 | Z 1 H C
       0x9f => unimplemented!("Opcode 0x9f is not yet implemented"),
       // 0xa0 | AND B | 1 | 4 | Z 0 1 0
-      0xa0 => unimplemented!("Opcode 0xa0 is not yet implemented"),
+      0xa0 => and_reg!(reg_b, self),
       // 0xa1 | AND C | 1 | 4 | Z 0 1 0
-      0xa1 => unimplemented!("Opcode 0xa1 is not yet implemented"),
+      0xa1 => and_reg!(reg_c, self),
       // 0xa2 | AND D | 1 | 4 | Z 0 1 0
-      0xa2 => unimplemented!("Opcode 0xa2 is not yet implemented"),
+      0xa2 => and_reg!(reg_d, self),
       // 0xa3 | AND E | 1 | 4 | Z 0 1 0
-      0xa3 => unimplemented!("Opcode 0xa3 is not yet implemented"),
+      0xa3 => and_reg!(reg_e, self),
       // 0xa4 | AND H | 1 | 4 | Z 0 1 0
-      0xa4 => unimplemented!("Opcode 0xa4 is not yet implemented"),
+      0xa4 => and_reg!(reg_h, self),
       // 0xa5 | AND L | 1 | 4 | Z 0 1 0
-      0xa5 => unimplemented!("Opcode 0xa5 is not yet implemented"),
+      0xa5 => and_reg!(reg_l, self),
       // 0xa6 | AND (HL) | 1 | 8 | Z 0 1 0
       0xa6 => unimplemented!("Opcode 0xa6 is not yet implemented"),
       // 0xa7 | AND A | 1 | 4 | Z 0 1 0
-      0xa7 => unimplemented!("Opcode 0xa7 is not yet implemented"),
+      0xa7 => and_reg!(reg_a, self),
       // 0xa8 | XOR B | 1 | 4 | Z 0 0 0
       0xa8 => xor_reg!(reg_b, self),
       // 0xa9 | XOR C | 1 | 4 | Z 0 0 0
@@ -742,7 +755,14 @@ impl Emu {
       // 0xbf | CP A | 1 | 4 | Z 1 H C
       0xbf => unimplemented!("Opcode 0xbf is not yet implemented"),
       // 0xc0 | RET NZ | 1 | 20/8 | - - - -
-      0xc0 => unimplemented!("Opcode 0xc0 is not yet implemented"),
+      0xc0 => {
+        if !self.cpu.flag_zero() {
+          let addr = self.pop_dword();
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xc1 | POP BC | 1 | 12 | - - - -
       0xc1 => {
         let dw = self.pop_dword();
@@ -764,7 +784,15 @@ impl Emu {
       // 0xc7 | RST 00H | 1 | 16 | - - - -
       0xc7 => unimplemented!("Opcode 0xc7 is not yet implemented"),
       // 0xc8 | RET Z | 1 | 20/8 | - - - -
-      0xc8 => unimplemented!("Opcode 0xc8 is not yet implemented"),
+      0xc8 => {
+        if self.cpu.flag_zero() {
+          let addr = self.pop_dword();
+          dbg!(addr);
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xc9 | RET | 1 | 16 | - - - -
       0xc9 => self.cpu.pc = self.pop_dword(),
       // 0xca | JP Z,a16 | 3 | 16/12 | - - - -
@@ -862,7 +890,7 @@ impl Emu {
       // 0xf9 | LD SP,HL | 1 | 8 | - - - -
       0xf9 => unimplemented!("Opcode 0xf9 is not yet implemented"),
       // 0xfa | LD A,(a16) | 3 | 16 | - - - -
-      0xfa => unimplemented!("Opcode 0xfa is not yet implemented"),
+      0xfa => load_word_to_reg_from_dword_addr!(reg_a, self),
       // 0xfb | EI | 1 | 4 | - - - -
       0xfb => self.interrupts_enabled_new_value = true,
       // 0xfe | CP d8 | 2 | 8 | Z 1 H C
@@ -1475,9 +1503,17 @@ impl Emu {
           0xff02 => self.serial.write_word(addr, w),
           0xff0f => self.mem.write_word(addr, w),
           0xff10...0xff3f => self.sound.write_word(addr, w),
+          0xff46 => {
+            self.graphics.dma_request(w, &self.mem);
+            self.cycles += 160;
+          }
           0xff40...0xff6b => self.graphics.write_word(addr, w),
           0xff7f => { /* seems a bug in tetris, let it go  */ }
-          _ => unimplemented!("Unimplemented IO port: 0x{:>04x}\n{:#x?}", addr, self.cpu),
+          _ => unimplemented!(
+            "Unimplemented IO port: 0x{:>04x}\n{:?}",
+            addr,
+            self.debugger.as_ref().map(|dbgr| dbgr.dump(&self))
+          ),
         };
       }
       _ => {
@@ -1513,8 +1549,8 @@ impl Emu {
   }
 
   pub fn push_dword(&mut self, dw: u16) {
-    self.push_word(dw.lo());
     self.push_word(dw.hi());
+    self.push_word(dw.lo());
   }
 
   pub fn pop_word(&mut self) -> u8 {
@@ -1523,8 +1559,8 @@ impl Emu {
   }
 
   pub fn pop_dword(&mut self) -> u16 {
-    let hi = self.pop_word();
     let lo = self.pop_word();
+    let hi = self.pop_word();
     dword!(hi, lo)
   }
 

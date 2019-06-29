@@ -1,4 +1,5 @@
 use super::display_adapter::*;
+use super::mem::*;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::WindowCanvas;
@@ -159,6 +160,15 @@ impl Graphics {
       0xff49 => self.obp1 = w,
       _ => unimplemented!("Unknown graphics address: 0x{:>04x}", addr),
     };
+  }
+
+  pub fn dma_request(&mut self, addr: u8, mem: &Mem) {
+    let addr = dword!(addr, 0x00);
+
+    for i in 0..0xA0 {
+      // @TODO Check if we have to force read (and defent against video phase blocks).
+      self.oam[i] = mem.read_word(addr + i as u16);
+    }
   }
 
   pub fn read_word(&self, addr: u16, force_read: bool) -> u8 {
