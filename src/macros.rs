@@ -4,6 +4,16 @@ macro_rules! dword {
   }};
 }
 
+macro_rules! swap {
+  ($reg:ident, $sel:ident) => {{
+    $sel.cpu.$reg = Util::swap($sel.cpu.$reg);
+    $sel.cpu.set_flag_zero_for($sel.cpu.$reg);
+    $sel.cpu.reset_flag_add_sub();
+    $sel.cpu.reset_flag_carry();
+    $sel.cpu.reset_flag_half_carry();
+  }};
+}
+
 macro_rules! load_dword_to_reg {
   ($cpu_dword_setter:ident, $sel:ident) => {{
     let dw = $sel.read_opcode_dword();

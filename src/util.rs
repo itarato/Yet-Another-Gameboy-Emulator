@@ -25,6 +25,10 @@ impl Util {
     w < acc
   }
 
+  pub fn swap(w: u8) -> u8 {
+    (w << 4) | (w >> 4)
+  }
+
   pub fn dword_signed_add(dword: u16, sw: i8) -> u16 {
     if sw >= 0 {
       dword.wrapping_add(sw as u16)

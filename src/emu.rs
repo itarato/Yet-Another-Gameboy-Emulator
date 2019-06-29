@@ -424,7 +424,11 @@ impl Emu {
       // 0x2e | LD L,d8 | 2 | 8 | - - - -
       0x2e => load_word_to_reg!(reg_l, self),
       // 0x2f | CPL | 1 | 4 | - 1 1 -
-      0x2f => unimplemented!("Opcode 0x2f is not yet implemented"),
+      0x2f => {
+        self.cpu.reg_a = !self.cpu.reg_a;
+        self.cpu.set_flag_add_sub(0x1);
+        self.cpu.set_flag_half_carry(0x1);
+      }
       // 0x30 | JR NC,r8 | 2 | 12/8 | - - - -
       0x30 => unimplemented!("Opcode 0x30 is not yet implemented"),
       // 0x31 | LD SP,d16 | 3 | 12 | - - - -
@@ -871,7 +875,13 @@ impl Emu {
       // 0xe5 | PUSH HL | 1 | 16 | - - - -
       0xe5 => self.push_dword(self.cpu.reg_hl()),
       // 0xe6 | AND d8 | 2 | 8 | Z 0 1 0
-      0xe6 => unimplemented!("Opcode 0xe6 is not yet implemented"),
+      0xe6 => {
+        self.cpu.reg_a = self.cpu.reg_a & self.read_opcode_word();
+        self.cpu.set_flag_zero_for(self.cpu.reg_a);
+        self.cpu.reset_flag_add_sub();
+        self.cpu.set_flag_half_carry(0x1);
+        self.cpu.reset_flag_carry();
+      }
       // 0xe7 | RST 20H | 1 | 16 | - - - -
       0xe7 => unimplemented!("Opcode 0xe7 is not yet implemented"),
       // 0xe8 | ADD SP,r8 | 2 | 16 | 0 0 H C
@@ -1046,21 +1056,29 @@ impl Emu {
       // 0x2f | SRA A | 2 | 8 | Z 0 0 0
       0x2f => unimplemented!("Prefix opcode 0x2f is not yet implemented"),
       // 0x30 | SWAP B | 2 | 8 | Z 0 0 0
-      0x30 => unimplemented!("Prefix opcode 0x30 is not yet implemented"),
+      0x30 => swap!(reg_b, self),
       // 0x31 | SWAP C | 2 | 8 | Z 0 0 0
-      0x31 => unimplemented!("Prefix opcode 0x31 is not yet implemented"),
+      0x31 => swap!(reg_c, self),
       // 0x32 | SWAP D | 2 | 8 | Z 0 0 0
-      0x32 => unimplemented!("Prefix opcode 0x32 is not yet implemented"),
+      0x32 => swap!(reg_d, self),
       // 0x33 | SWAP E | 2 | 8 | Z 0 0 0
-      0x33 => unimplemented!("Prefix opcode 0x33 is not yet implemented"),
+      0x33 => swap!(reg_e, self),
       // 0x34 | SWAP H | 2 | 8 | Z 0 0 0
-      0x34 => unimplemented!("Prefix opcode 0x34 is not yet implemented"),
+      0x34 => swap!(reg_h, self),
       // 0x35 | SWAP L | 2 | 8 | Z 0 0 0
-      0x35 => unimplemented!("Prefix opcode 0x35 is not yet implemented"),
+      0x35 => swap!(reg_l, self),
       // 0x36 | SWAP (HL) | 2 | 16 | Z 0 0 0
-      0x36 => unimplemented!("Prefix opcode 0x36 is not yet implemented"),
+      0x36 => {
+        let w = self.read_word(self.cpu.reg_hl(), false);
+        let swapped = Util::swap(w);
+        self.write_word(self.cpu.reg_hl(), swapped);
+        self.cpu.set_flag_zero_for(swapped);
+        self.cpu.reset_flag_add_sub();
+        self.cpu.reset_flag_carry();
+        self.cpu.reset_flag_half_carry();
+      },
       // 0x37 | SWAP A | 2 | 8 | Z 0 0 0
-      0x37 => unimplemented!("Prefix opcode 0x37 is not yet implemented"),
+      0x37 => swap!(reg_a, self),
       // 0x38 | SRL B | 2 | 8 | Z 0 0 C
       0x38 => unimplemented!("Prefix opcode 0x38 is not yet implemented"),
       // 0x39 | SRL C | 2 | 8 | Z 0 0 C
