@@ -301,7 +301,7 @@ impl Emu {
       // 0x01 | LD BC,d16 | 3 | 12 | - - - -
       0x01 => load_dword_to_reg!(set_bc, self),
       // 0x02 | LD (BC),A | 1 | 8 | - - - -
-      0x02 => unimplemented!("Opcode 0x02 is not yet implemented"),
+      0x02 => load_word_to_reg_addr_from_reg!(reg_b, reg_c, reg_a, self),
       // 0x03 | INC BC | 1 | 8 | - - - -
       0x03 => self.cpu.inc_bc(),
       // 0x04 | INC B | 1 | 4 | Z 0 H -
@@ -333,7 +333,7 @@ impl Emu {
       // 0x11 | LD DE,d16 | 3 | 12 | - - - -
       0x11 => load_dword_to_reg!(set_de, self),
       // 0x12 | LD (DE),A | 1 | 8 | - - - -
-      0x12 => unimplemented!("Opcode 0x12 is not yet implemented"),
+      0x12 => load_word_to_reg_addr_from_reg!(reg_d, reg_e, reg_a, self),
       // 0x13 | INC DE | 1 | 8 | - - - -
       0x13 => self.cpu.inc_de(),
       // 0x14 | INC D | 1 | 4 | Z 0 H -
@@ -736,7 +736,13 @@ impl Emu {
       // 0xb5 | OR L | 1 | 4 | Z 0 0 0
       0xb5 => or_reg!(reg_l, self),
       // 0xb6 | OR (HL) | 1 | 8 | Z 0 0 0
-      0xb6 => unimplemented!("Opcode 0xb6 is not yet implemented"),
+      0xb6 => {
+        self.cpu.reg_a = self.cpu.reg_a | self.read_word(self.cpu.reg_hl(), false);
+        self.cpu.set_flag_zero_for(self.cpu.reg_a);
+        self.cpu.reset_flag_add_sub();
+        self.cpu.reset_flag_half_carry();
+        self.cpu.reset_flag_carry();
+      }
       // 0xb7 | OR A | 1 | 4 | Z 0 0 0
       0xb7 => or_reg!(reg_a, self),
       // 0xb8 | CP B | 1 | 4 | Z 1 H C
@@ -807,7 +813,14 @@ impl Emu {
       // 0xc9 | RET | 1 | 16 | - - - -
       0xc9 => self.cpu.pc = self.pop_dword(),
       // 0xca | JP Z,a16 | 3 | 16/12 | - - - -
-      0xca => unimplemented!("Opcode 0xca is not yet implemented"),
+      0xca => {
+        if self.cpu.flag_zero() {
+          let addr = self.read_opcode_dword();
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xcb | PREFIX CB | 1 | 4 | - - - -
       0xcb => self.read_prefix_instruction(),
       // 0xcc | CALL Z,a16 | 3 | 24/12 | - - - -
@@ -1554,7 +1567,7 @@ impl Emu {
       }
       0xfe00...0xfe9f => self.graphics.write_word(addr, w),
       0xfea0...0xfeff => {
-        dbg!("write to 0xfea0...0xfeff - bug???");
+        // dbg!("write to 0xfea0...0xfeff - bug???");
       }
       0xff80...0xffff => {
         // Internal ram
