@@ -164,7 +164,7 @@ impl Sound {
 
       audio_device: device,
       channel1_out: pocket,
-      
+
       muted: false,
     }
   }

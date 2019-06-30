@@ -887,7 +887,7 @@ impl Emu {
       // 0xe8 | ADD SP,r8 | 2 | 16 | 0 0 H C
       0xe8 => unimplemented!("Opcode 0xe8 is not yet implemented"),
       // 0xe9 | JP (HL) | 1 | 4 | - - - -
-      0xe9 => unimplemented!("Opcode 0xe9 is not yet implemented"),
+      0xe9 => self.cpu.pc = self.cpu.reg_hl(),
       // 0xea | LD (a16),A | 3 | 16 | - - - -
       0xea => {
         let addr = self.read_opcode_dword();
