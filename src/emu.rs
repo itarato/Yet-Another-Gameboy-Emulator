@@ -1224,133 +1224,157 @@ impl Emu {
       // 0x7f | BIT 7,A | 2 | 8 | Z 0 1 -
       0x7f => op_bit_test!(self, reg_a, 7),
       // 0x80 | RES 0,B | 2 | 8 | - - - -
-      0x80 => unimplemented!("Prefix opcode 0x80 is not yet implemented"),
+      0x80 => self.cpu.reg_b = Util::setbit(self.cpu.reg_b, 0, 0x0),
       // 0x81 | RES 0,C | 2 | 8 | - - - -
-      0x81 => unimplemented!("Prefix opcode 0x81 is not yet implemented"),
+      0x81 => self.cpu.reg_c = Util::setbit(self.cpu.reg_c, 0, 0x0),
       // 0x82 | RES 0,D | 2 | 8 | - - - -
-      0x82 => unimplemented!("Prefix opcode 0x82 is not yet implemented"),
+      0x82 => self.cpu.reg_d = Util::setbit(self.cpu.reg_d, 0, 0x0),
       // 0x83 | RES 0,E | 2 | 8 | - - - -
-      0x83 => unimplemented!("Prefix opcode 0x83 is not yet implemented"),
+      0x83 => self.cpu.reg_e = Util::setbit(self.cpu.reg_e, 0, 0x0),
       // 0x84 | RES 0,H | 2 | 8 | - - - -
-      0x84 => unimplemented!("Prefix opcode 0x84 is not yet implemented"),
+      0x84 => self.cpu.reg_h = Util::setbit(self.cpu.reg_h, 0, 0x0),
       // 0x85 | RES 0,L | 2 | 8 | - - - -
-      0x85 => unimplemented!("Prefix opcode 0x85 is not yet implemented"),
+      0x85 => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 0, 0x0),
       // 0x86 | RES 0,(HL) | 2 | 16 | - - - -
-      0x86 => unimplemented!("Prefix opcode 0x86 is not yet implemented"),
+      0x86 => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 0, 0x0),
+      ),
       // 0x87 | RES 0,A | 2 | 8 | - - - -
-      0x87 => unimplemented!("Prefix opcode 0x87 is not yet implemented"),
+      0x87 => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 0, 0x0),
       // 0x88 | RES 1,B | 2 | 8 | - - - -
-      0x88 => unimplemented!("Prefix opcode 0x88 is not yet implemented"),
+      0x88 => self.cpu.reg_b = Util::setbit(self.cpu.reg_b, 1, 0x0),
       // 0x89 | RES 1,C | 2 | 8 | - - - -
-      0x89 => unimplemented!("Prefix opcode 0x89 is not yet implemented"),
+      0x89 => self.cpu.reg_c = Util::setbit(self.cpu.reg_c, 1, 0x0),
       // 0x8a | RES 1,D | 2 | 8 | - - - -
-      0x8a => unimplemented!("Prefix opcode 0x8a is not yet implemented"),
+      0x8a => self.cpu.reg_d = Util::setbit(self.cpu.reg_d, 1, 0x0),
       // 0x8b | RES 1,E | 2 | 8 | - - - -
-      0x8b => unimplemented!("Prefix opcode 0x8b is not yet implemented"),
+      0x8b => self.cpu.reg_e = Util::setbit(self.cpu.reg_e, 1, 0x0),
       // 0x8c | RES 1,H | 2 | 8 | - - - -
-      0x8c => unimplemented!("Prefix opcode 0x8c is not yet implemented"),
+      0x8c => self.cpu.reg_h = Util::setbit(self.cpu.reg_h, 1, 0x0),
       // 0x8d | RES 1,L | 2 | 8 | - - - -
-      0x8d => unimplemented!("Prefix opcode 0x8d is not yet implemented"),
+      0x8d => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 1, 0x0),
       // 0x8e | RES 1,(HL) | 2 | 16 | - - - -
-      0x8e => unimplemented!("Prefix opcode 0x8e is not yet implemented"),
+      0x8e => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 1, 0x0),
+      ),
       // 0x8f | RES 1,A | 2 | 8 | - - - -
-      0x8f => unimplemented!("Prefix opcode 0x8f is not yet implemented"),
+      0x8f => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 1, 0x0),
       // 0x90 | RES 2,B | 2 | 8 | - - - -
-      0x90 => unimplemented!("Prefix opcode 0x90 is not yet implemented"),
+      0x90 => self.cpu.reg_b = Util::setbit(self.cpu.reg_b, 2, 0x0),
       // 0x91 | RES 2,C | 2 | 8 | - - - -
-      0x91 => unimplemented!("Prefix opcode 0x91 is not yet implemented"),
+      0x91 => self.cpu.reg_c = Util::setbit(self.cpu.reg_c, 2, 0x0),
       // 0x92 | RES 2,D | 2 | 8 | - - - -
-      0x92 => unimplemented!("Prefix opcode 0x92 is not yet implemented"),
+      0x92 => self.cpu.reg_d = Util::setbit(self.cpu.reg_d, 2, 0x0),
       // 0x93 | RES 2,E | 2 | 8 | - - - -
-      0x93 => unimplemented!("Prefix opcode 0x93 is not yet implemented"),
+      0x93 => self.cpu.reg_e = Util::setbit(self.cpu.reg_e, 2, 0x0),
       // 0x94 | RES 2,H | 2 | 8 | - - - -
-      0x94 => unimplemented!("Prefix opcode 0x94 is not yet implemented"),
+      0x94 => self.cpu.reg_h = Util::setbit(self.cpu.reg_h, 2, 0x0),
       // 0x95 | RES 2,L | 2 | 8 | - - - -
-      0x95 => unimplemented!("Prefix opcode 0x95 is not yet implemented"),
+      0x95 => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 2, 0x0),
       // 0x96 | RES 2,(HL) | 2 | 16 | - - - -
-      0x96 => unimplemented!("Prefix opcode 0x96 is not yet implemented"),
+      0x96 => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 2, 0x0),
+      ),
       // 0x97 | RES 2,A | 2 | 8 | - - - -
-      0x97 => unimplemented!("Prefix opcode 0x97 is not yet implemented"),
+      0x97 => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 2, 0x0),
       // 0x98 | RES 3,B | 2 | 8 | - - - -
-      0x98 => unimplemented!("Prefix opcode 0x98 is not yet implemented"),
+      0x98 => self.cpu.reg_b = Util::setbit(self.cpu.reg_b, 3, 0x0),
       // 0x99 | RES 3,C | 2 | 8 | - - - -
-      0x99 => unimplemented!("Prefix opcode 0x99 is not yet implemented"),
+      0x99 => self.cpu.reg_c = Util::setbit(self.cpu.reg_c, 3, 0x0),
       // 0x9a | RES 3,D | 2 | 8 | - - - -
-      0x9a => unimplemented!("Prefix opcode 0x9a is not yet implemented"),
+      0x9a => self.cpu.reg_d = Util::setbit(self.cpu.reg_d, 3, 0x0),
       // 0x9b | RES 3,E | 2 | 8 | - - - -
-      0x9b => unimplemented!("Prefix opcode 0x9b is not yet implemented"),
+      0x9b => self.cpu.reg_e = Util::setbit(self.cpu.reg_e, 3, 0x0),
       // 0x9c | RES 3,H | 2 | 8 | - - - -
-      0x9c => unimplemented!("Prefix opcode 0x9c is not yet implemented"),
+      0x9c => self.cpu.reg_h = Util::setbit(self.cpu.reg_h, 3, 0x0),
       // 0x9d | RES 3,L | 2 | 8 | - - - -
-      0x9d => unimplemented!("Prefix opcode 0x9d is not yet implemented"),
+      0x9d => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 3, 0x0),
       // 0x9e | RES 3,(HL) | 2 | 16 | - - - -
-      0x9e => unimplemented!("Prefix opcode 0x9e is not yet implemented"),
+      0x9e => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 3, 0x0),
+      ),
       // 0x9f | RES 3,A | 2 | 8 | - - - -
-      0x9f => unimplemented!("Prefix opcode 0x9f is not yet implemented"),
+      0x9f => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 3, 0x0),
       // 0xa0 | RES 4,B | 2 | 8 | - - - -
-      0xa0 => unimplemented!("Prefix opcode 0xa0 is not yet implemented"),
+      0xa0 => self.cpu.reg_b = Util::setbit(self.cpu.reg_b, 4, 0x0),
       // 0xa1 | RES 4,C | 2 | 8 | - - - -
-      0xa1 => unimplemented!("Prefix opcode 0xa1 is not yet implemented"),
+      0xa1 => self.cpu.reg_c = Util::setbit(self.cpu.reg_c, 4, 0x0),
       // 0xa2 | RES 4,D | 2 | 8 | - - - -
-      0xa2 => unimplemented!("Prefix opcode 0xa2 is not yet implemented"),
+      0xa2 => self.cpu.reg_d = Util::setbit(self.cpu.reg_d, 4, 0x0),
       // 0xa3 | RES 4,E | 2 | 8 | - - - -
-      0xa3 => unimplemented!("Prefix opcode 0xa3 is not yet implemented"),
+      0xa3 => self.cpu.reg_e = Util::setbit(self.cpu.reg_e, 4, 0x0),
       // 0xa4 | RES 4,H | 2 | 8 | - - - -
-      0xa4 => unimplemented!("Prefix opcode 0xa4 is not yet implemented"),
+      0xa4 => self.cpu.reg_h = Util::setbit(self.cpu.reg_h, 4, 0x0),
       // 0xa5 | RES 4,L | 2 | 8 | - - - -
-      0xa5 => unimplemented!("Prefix opcode 0xa5 is not yet implemented"),
+      0xa5 => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 4, 0x0),
       // 0xa6 | RES 4,(HL) | 2 | 16 | - - - -
-      0xa6 => unimplemented!("Prefix opcode 0xa6 is not yet implemented"),
+      0xa6 => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 4, 0x0),
+      ),
       // 0xa7 | RES 4,A | 2 | 8 | - - - -
-      0xa7 => unimplemented!("Prefix opcode 0xa7 is not yet implemented"),
+      0xa7 => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 4, 0x0),
       // 0xa8 | RES 5,B | 2 | 8 | - - - -
-      0xa8 => unimplemented!("Prefix opcode 0xa8 is not yet implemented"),
+      0xa8 => self.cpu.reg_b = Util::setbit(self.cpu.reg_b, 5, 0x0),
       // 0xa9 | RES 5,C | 2 | 8 | - - - -
-      0xa9 => unimplemented!("Prefix opcode 0xa9 is not yet implemented"),
+      0xa9 => self.cpu.reg_c = Util::setbit(self.cpu.reg_c, 5, 0x0),
       // 0xaa | RES 5,D | 2 | 8 | - - - -
-      0xaa => unimplemented!("Prefix opcode 0xaa is not yet implemented"),
+      0xaa => self.cpu.reg_d = Util::setbit(self.cpu.reg_d, 5, 0x0),
       // 0xab | RES 5,E | 2 | 8 | - - - -
-      0xab => unimplemented!("Prefix opcode 0xab is not yet implemented"),
+      0xab => self.cpu.reg_e = Util::setbit(self.cpu.reg_e, 5, 0x0),
       // 0xac | RES 5,H | 2 | 8 | - - - -
-      0xac => unimplemented!("Prefix opcode 0xac is not yet implemented"),
+      0xac => self.cpu.reg_h = Util::setbit(self.cpu.reg_h, 5, 0x0),
       // 0xad | RES 5,L | 2 | 8 | - - - -
-      0xad => unimplemented!("Prefix opcode 0xad is not yet implemented"),
+      0xad => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 5, 0x0),
       // 0xae | RES 5,(HL) | 2 | 16 | - - - -
-      0xae => unimplemented!("Prefix opcode 0xae is not yet implemented"),
+      0xae => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 5, 0x0),
+      ),
       // 0xaf | RES 5,A | 2 | 8 | - - - -
-      0xaf => unimplemented!("Prefix opcode 0xaf is not yet implemented"),
+      0xaf => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 5, 0x0),
       // 0xb0 | RES 6,B | 2 | 8 | - - - -
-      0xb0 => unimplemented!("Prefix opcode 0xb0 is not yet implemented"),
+      0xb0 => self.cpu.reg_b = Util::setbit(self.cpu.reg_b, 6, 0x0),
       // 0xb1 | RES 6,C | 2 | 8 | - - - -
-      0xb1 => unimplemented!("Prefix opcode 0xb1 is not yet implemented"),
+      0xb1 => self.cpu.reg_c = Util::setbit(self.cpu.reg_c, 6, 0x0),
       // 0xb2 | RES 6,D | 2 | 8 | - - - -
-      0xb2 => unimplemented!("Prefix opcode 0xb2 is not yet implemented"),
+      0xb2 => self.cpu.reg_d = Util::setbit(self.cpu.reg_d, 6, 0x0),
       // 0xb3 | RES 6,E | 2 | 8 | - - - -
-      0xb3 => unimplemented!("Prefix opcode 0xb3 is not yet implemented"),
+      0xb3 => self.cpu.reg_e = Util::setbit(self.cpu.reg_e, 6, 0x0),
       // 0xb4 | RES 6,H | 2 | 8 | - - - -
-      0xb4 => unimplemented!("Prefix opcode 0xb4 is not yet implemented"),
+      0xb4 => self.cpu.reg_h = Util::setbit(self.cpu.reg_h, 6, 0x0),
       // 0xb5 | RES 6,L | 2 | 8 | - - - -
-      0xb5 => unimplemented!("Prefix opcode 0xb5 is not yet implemented"),
+      0xb5 => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 6, 0x0),
       // 0xb6 | RES 6,(HL) | 2 | 16 | - - - -
-      0xb6 => unimplemented!("Prefix opcode 0xb6 is not yet implemented"),
+      0xb6 => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 6, 0x0),
+      ),
       // 0xb7 | RES 6,A | 2 | 8 | - - - -
-      0xb7 => unimplemented!("Prefix opcode 0xb7 is not yet implemented"),
+      0xb7 => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 6, 0x0),
       // 0xb8 | RES 7,B | 2 | 8 | - - - -
-      0xb8 => unimplemented!("Prefix opcode 0xb8 is not yet implemented"),
+      0xb8 => self.cpu.reg_b = Util::setbit(self.cpu.reg_b, 7, 0x0),
       // 0xb9 | RES 7,C | 2 | 8 | - - - -
-      0xb9 => unimplemented!("Prefix opcode 0xb9 is not yet implemented"),
+      0xb9 => self.cpu.reg_c = Util::setbit(self.cpu.reg_c, 7, 0x0),
       // 0xba | RES 7,D | 2 | 8 | - - - -
-      0xba => unimplemented!("Prefix opcode 0xba is not yet implemented"),
+      0xba => self.cpu.reg_d = Util::setbit(self.cpu.reg_d, 7, 0x0),
       // 0xbb | RES 7,E | 2 | 8 | - - - -
-      0xbb => unimplemented!("Prefix opcode 0xbb is not yet implemented"),
+      0xbb => self.cpu.reg_e = Util::setbit(self.cpu.reg_e, 7, 0x0),
       // 0xbc | RES 7,H | 2 | 8 | - - - -
-      0xbc => unimplemented!("Prefix opcode 0xbc is not yet implemented"),
+      0xbc => self.cpu.reg_h = Util::setbit(self.cpu.reg_h, 7, 0x0),
       // 0xbd | RES 7,L | 2 | 8 | - - - -
-      0xbd => unimplemented!("Prefix opcode 0xbd is not yet implemented"),
+      0xbd => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 7, 0x0),
       // 0xbe | RES 7,(HL) | 2 | 16 | - - - -
-      0xbe => unimplemented!("Prefix opcode 0xbe is not yet implemented"),
+      0xbe => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 7, 0x0),
+      ),
       // 0xbf | RES 7,A | 2 | 8 | - - - -
-      0xbf => unimplemented!("Prefix opcode 0xbf is not yet implemented"),
+      0xbf => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 7, 0x0),
       // 0xc0 | SET 0,B | 2 | 8 | - - - -
       0xc0 => unimplemented!("Prefix opcode 0xc0 is not yet implemented"),
       // 0xc1 | SET 0,C | 2 | 8 | - - - -
