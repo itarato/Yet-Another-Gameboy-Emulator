@@ -36,5 +36,10 @@ fn main() {
   if args.iter().find(|&arg| arg == "--debug").is_some() {
     emu.enable_debug_mode();
   }
+
+  if args.iter().find(|&arg| arg == "--no-sound").is_some() {
+    emu.mute_sound();
+  }
+
   emu.run();
 }

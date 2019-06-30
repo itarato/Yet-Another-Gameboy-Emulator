@@ -13,12 +13,20 @@ impl Util {
     (w & 0xf) + (acc & 0xf) > 0xf
   }
 
+  pub fn has_dw_half_carry(w: u16, acc: u16) -> bool {
+    (w & 0xfff) + (acc & 0xfff) > 0xfff
+  }
+
   pub fn has_half_borrow(w: u8, acc: u8) -> bool {
     (w & 0xf) < (acc & 0xf)
   }
 
   pub fn has_carry(w: u8, acc: u8) -> bool {
     (w as u16) + (acc as u16) > 0xff
+  }
+
+  pub fn has_dw_carry(w: u16, acc: u16) -> bool {
+    (w as u32) + (acc as u32) > 0xffff
   }
 
   pub fn has_borrow(w: u8, acc: u8) -> bool {

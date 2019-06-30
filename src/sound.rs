@@ -113,6 +113,8 @@ pub struct Sound {
   audio_device: AudioDevice<SquareWave>,
 
   channel1_out: Arc<Mutex<Option<SoundPacket>>>,
+
+  muted: bool,
 }
 
 impl Sound {
@@ -162,6 +164,8 @@ impl Sound {
 
       audio_device: device,
       channel1_out: pocket,
+      
+      muted: false,
     }
   }
 
@@ -216,6 +220,10 @@ impl Sound {
   }
 
   fn handle_channel_1_out(&self) {
+    if self.muted {
+      return;
+    }
+
     if !self.is_sound_reg_enabled() {
       return;
     }
@@ -258,5 +266,9 @@ impl Sound {
 
   fn handle_channel_4_out(&self) {
     // @TODO Implement.
+  }
+
+  pub fn mute(&mut self) {
+    self.muted = true;
   }
 }

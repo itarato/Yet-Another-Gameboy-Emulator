@@ -315,7 +315,7 @@ impl Emu {
       // 0x08 | LD (a16),SP | 3 | 20 | - - - -
       0x08 => unimplemented!("Opcode 0x08 is not yet implemented"),
       // 0x09 | ADD HL,BC | 1 | 8 | - 0 H C
-      0x09 => unimplemented!("Opcode 0x09 is not yet implemented"),
+      0x09 => add_to_hl!(reg_bc, self),
       // 0x0a | LD A,(BC) | 1 | 8 | - - - -
       0x0a => load_word_to_reg_from_reg_addr!(reg_a, reg_b, reg_c, self),
       // 0x0b | DEC BC | 1 | 8 | - - - -
@@ -360,7 +360,7 @@ impl Emu {
         self.cpu.pc = addr;
       }
       // 0x19 | ADD HL,DE | 1 | 8 | - 0 H C
-      0x19 => unimplemented!("Opcode 0x19 is not yet implemented"),
+      0x19 => add_to_hl!(reg_de, self),
       // 0x1a | LD A,(DE) | 1 | 8 | - - - -
       0x1a => load_word_to_reg_from_reg_addr!(reg_a, reg_d, reg_e, self),
       // 0x1b | DEC DE | 1 | 8 | - - - -
@@ -409,7 +409,7 @@ impl Emu {
         }
       }
       // 0x29 | ADD HL,HL | 1 | 8 | - 0 H C
-      0x29 => unimplemented!("Opcode 0x29 is not yet implemented"),
+      0x29 => add_to_hl!(reg_hl, self),
       // 0x2a | LD A,(HL+) | 1 | 8 | - - - -
       0x2a => {
         load_word_to_reg_from_reg_addr!(reg_a, reg_h, reg_l, self);
@@ -460,7 +460,7 @@ impl Emu {
       // 0x38 | JR C,r8 | 2 | 12/8 | - - - -
       0x38 => unimplemented!("Opcode 0x38 is not yet implemented"),
       // 0x39 | ADD HL,SP | 1 | 8 | - 0 H C
-      0x39 => unimplemented!("Opcode 0x39 is not yet implemented"),
+      0x39 => add_to_hl!(reg_sp, self),
       // 0x3a | LD A,(HL-) | 1 | 8 | - - - -
       0x3a => {
         load_word_to_reg_from_reg_addr!(reg_a, reg_h, reg_l, self);
@@ -793,7 +793,7 @@ impl Emu {
       // 0xc6 | ADD A,d8 | 2 | 8 | Z 0 H C
       0xc6 => unimplemented!("Opcode 0xc6 is not yet implemented"),
       // 0xc7 | RST 00H | 1 | 16 | - - - -
-      0xc7 => unimplemented!("Opcode 0xc7 is not yet implemented"),
+      0xc7 => rst!(0x00, self),
       // 0xc8 | RET Z | 1 | 20/8 | - - - -
       0xc8 => {
         if self.cpu.flag_zero() {
@@ -821,7 +821,7 @@ impl Emu {
       // 0xce | ADC A,d8 | 2 | 8 | Z 0 H C
       0xce => unimplemented!("Opcode 0xce is not yet implemented"),
       // 0xcf | RST 08H | 1 | 16 | - - - -
-      0xcf => unimplemented!("Opcode 0xcf is not yet implemented"),
+      0xcf => rst!(0x08, self),
       // 0xd0 | RET NC | 1 | 20/8 | - - - -
       0xd0 => unimplemented!("Opcode 0xd0 is not yet implemented"),
       // 0xd1 | POP DE | 1 | 12 | - - - -
@@ -838,7 +838,7 @@ impl Emu {
       // 0xd6 | SUB d8 | 2 | 8 | Z 1 H C
       0xd6 => unimplemented!("Opcode 0xd6 is not yet implemented"),
       // 0xd7 | RST 10H | 1 | 16 | - - - -
-      0xd7 => unimplemented!("Opcode 0xd7 is not yet implemented"),
+      0xd7 => rst!(0x10, self),
       // 0xd8 | RET C | 1 | 20/8 | - - - -
       0xd8 => unimplemented!("Opcode 0xd8 is not yet implemented"),
       // 0xd9 | RETI | 1 | 16 | - - - -
@@ -856,7 +856,7 @@ impl Emu {
       // 0xde | SBC A,d8 | 2 | 8 | Z 1 H C
       0xde => unimplemented!("Opcode 0xde is not yet implemented"),
       // 0xdf | RST 18H | 1 | 16 | - - - -
-      0xdf => unimplemented!("Opcode 0xdf is not yet implemented"),
+      0xdf => rst!(0x18, self),
       // 0xe0 | LDH (a8),A | 2 | 12 | - - - -
       0xe0 => {
         let addr = 0xff00 | self.read_opcode_word() as u16;
@@ -883,7 +883,7 @@ impl Emu {
         self.cpu.reset_flag_carry();
       }
       // 0xe7 | RST 20H | 1 | 16 | - - - -
-      0xe7 => unimplemented!("Opcode 0xe7 is not yet implemented"),
+      0xe7 => rst!(0x20, self),
       // 0xe8 | ADD SP,r8 | 2 | 16 | 0 0 H C
       0xe8 => unimplemented!("Opcode 0xe8 is not yet implemented"),
       // 0xe9 | JP (HL) | 1 | 4 | - - - -
@@ -896,7 +896,7 @@ impl Emu {
       // 0xee | XOR d8 | 2 | 8 | Z 0 0 0
       0xee => unimplemented!("Opcode 0xee is not yet implemented"),
       // 0xef | RST 28H | 1 | 16 | - - - -
-      0xef => unimplemented!("Opcode 0xef is not yet implemented"),
+      0xef => rst!(0x28, self),
       // 0xf0 | LDH A,(a8) | 2 | 12 | - - - -
       0xf0 => {
         let addr = 0xff00 | self.read_opcode_word() as u16;
@@ -916,7 +916,7 @@ impl Emu {
       // 0xf6 | OR d8 | 2 | 8 | Z 0 0 0
       0xf6 => unimplemented!("Opcode 0xf6 is not yet implemented"),
       // 0xf7 | RST 30H | 1 | 16 | - - - -
-      0xf7 => unimplemented!("Opcode 0xf7 is not yet implemented"),
+      0xf7 => rst!(0x30, self),
       // 0xf8 | LD HL,SP+r8 | 2 | 12 | 0 0 H C
       0xf8 => unimplemented!("Opcode 0xf8 is not yet implemented"),
       // 0xf9 | LD SP,HL | 1 | 8 | - - - -
@@ -938,7 +938,7 @@ impl Emu {
         self.cpu.set_flag_add_sub(0b1);
       }
       // 0xff | RST 38H | 1 | 16 | - - - -
-      0xff => unimplemented!("Opcode 0xff is not yet implemented"),
+      0xff => rst!(0x38, self),
       opcode @ _ => panic!("Unexpected opcode: {:?}", opcode),
     };
 
@@ -1076,7 +1076,7 @@ impl Emu {
         self.cpu.reset_flag_add_sub();
         self.cpu.reset_flag_carry();
         self.cpu.reset_flag_half_carry();
-      },
+      }
       // 0x37 | SWAP A | 2 | 8 | Z 0 0 0
       0x37 => swap!(reg_a, self),
       // 0x38 | SRL B | 2 | 8 | Z 0 0 C
@@ -1671,6 +1671,10 @@ impl Emu {
     }
 
     println!("");
+  }
+
+  pub fn mute_sound(&mut self) {
+    self.sound.mute();
   }
 
   fn rom_bank_number(&self) -> u8 {

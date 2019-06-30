@@ -37,6 +37,10 @@ impl Cpu {
     dword!(self.reg_h, self.reg_l)
   }
 
+  pub fn reg_sp(&self) -> u16 {
+    self.sp
+  }
+
   set_dword_register! { set_af, reg_a, reg_f }
   set_dword_register! { set_bc, reg_b, reg_c }
   set_dword_register! { set_de, reg_d, reg_e }

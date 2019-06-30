@@ -4,6 +4,22 @@ macro_rules! dword {
   }};
 }
 
+macro_rules! add_to_hl {
+  ($reg:ident, $sel:ident) => {{
+    let acc = $sel.cpu.reg_hl().wrapping_add($sel.cpu.$reg());
+
+    $sel
+      .cpu
+      .set_flag_half_carry(Util::has_dw_half_carry($sel.cpu.reg_hl(), $sel.cpu.$reg()).as_bit());
+    $sel
+      .cpu
+      .set_flag_carry(Util::has_dw_carry($sel.cpu.reg_hl(), $sel.cpu.$reg()).as_bit());
+    $sel.cpu.reset_flag_add_sub();
+
+    $sel.cpu.set_hl(acc);
+  }};
+}
+
 macro_rules! swap {
   ($reg:ident, $sel:ident) => {{
     $sel.cpu.$reg = Util::swap($sel.cpu.$reg);
@@ -11,6 +27,13 @@ macro_rules! swap {
     $sel.cpu.reset_flag_add_sub();
     $sel.cpu.reset_flag_carry();
     $sel.cpu.reset_flag_half_carry();
+  }};
+}
+
+macro_rules! rst {
+  ($addr:expr, $sel:ident) => {{
+    $sel.push_dword($sel.cpu.pc);
+    $sel.cpu.pc = $addr;
   }};
 }
 
