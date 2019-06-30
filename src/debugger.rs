@@ -8,7 +8,8 @@ use sdl2::render::WindowCanvas;
 use sdl2::ttf::Sdl2TtfContext;
 use sdl2::{ttf, Sdl};
 use std::collections::HashSet;
-use std::io::{self, Write};
+use std::fs::File;
+use std::io::{stdin, stdout, Write};
 use std::rc::Rc;
 
 #[derive(Clone, Copy)]
@@ -25,6 +26,8 @@ pub enum DebuggerCommand {
   History,
   BackgroundOn,
   BackgroundOff,
+  LogOn,
+  LogOff,
 }
 
 pub struct Debugger {
@@ -34,6 +37,8 @@ pub struct Debugger {
   ttf_context: Sdl2TtfContext,
   pc_history: History<u16>,
   background_on: bool,
+  log: File,
+  log_on: bool,
 }
 
 impl Debugger {
@@ -57,14 +62,20 @@ impl Debugger {
       ttf_context: ttf::init().unwrap(),
       pc_history: History::with_capacity(4),
       background_on: false,
+      log: File::create("./debug.log").unwrap(),
+      log_on: false,
     };
     // Break at start.
     debugger.breakpoints.insert(0x0);
     debugger
   }
 
-  pub fn should_break(&mut self, pc: u16) -> bool {
-    self.pc_history.push(pc);
+  pub fn should_break(&mut self, cpu: &Cpu) -> bool {
+    self.pc_history.push(cpu.pc);
+
+    if self.log_on {
+      let _ = write!(self.log, "PC: 0x{:>04x} |> AF: {:>02x}{:>02x} BC: {:>02x}{:>02x} DE: {:>02x}{:>02x} HL: {:>02x}{:>02x} |> SP {:>04x}\n", cpu.pc, cpu.reg_a, cpu.reg_f, cpu.reg_b, cpu.reg_c, cpu.reg_d, cpu.reg_e, cpu.reg_h, cpu.reg_l, cpu.sp);
+    }
 
     if let Some(next_count) = self.next_count {
       if next_count == 1 {
@@ -75,8 +86,8 @@ impl Debugger {
       }
     }
 
-    if self.breakpoints.contains(&pc) {
-      println!("[YAGBE] -- Breakpoint at 0x{:x}", pc);
+    if self.breakpoints.contains(&(cpu.pc)) {
+      println!("[YAGBE] -- Breakpoint at 0x{:x}", cpu.pc);
       return true;
     }
 
@@ -87,9 +98,9 @@ impl Debugger {
     let mut buffer = String::new();
 
     print!("[YAGBE]> ");
-    let _ = std::io::stdout().flush();
+    let _ = stdout().flush();
 
-    let _ = io::stdin().read_line(&mut buffer).unwrap();
+    let _ = stdin().read_line(&mut buffer).unwrap();
 
     let parts = buffer.trim().split(' ').collect::<Vec<&str>>();
 
@@ -138,6 +149,14 @@ impl Debugger {
       "cpu" => DebuggerCommand::CpuPrint,
       "history" | "h" => DebuggerCommand::History,
       "display" | "d" => DebuggerCommand::Display,
+      "log-on" | "lon" => {
+        self.log_on = true;
+        DebuggerCommand::LogOn
+      }
+      "log-off" | "loff" => {
+        self.log_on = false;
+        DebuggerCommand::LogOff
+      }
       "exit" | "e" | "quit" | "q" => DebuggerCommand::Quit,
       cmd @ _ => {
         debug!("Unknown debugger command.");
@@ -271,7 +290,7 @@ impl Debugger {
   }
 
   fn scale() -> usize {
-    4usize
+    2usize
   }
 
   pub fn dump(&self, emu: &Emu) -> String {

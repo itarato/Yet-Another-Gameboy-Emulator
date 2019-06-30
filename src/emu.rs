@@ -139,7 +139,7 @@ impl Emu {
     let mut cycles_prev = 0u64;
     loop {
       if let Some(debugger) = self.debugger.as_mut() {
-        let should_break = debugger.should_break(self.cpu.pc);
+        let should_break = debugger.should_break(&self.cpu);
         if should_break {
           self.operate_debugger();
         }
