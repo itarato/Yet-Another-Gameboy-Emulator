@@ -162,7 +162,7 @@ impl Emu {
 
       if self.iteration_count & 0xfff == 0 {
         if let Some(dbgr) = self.debugger.as_mut() {
-          dbgr.update_debug_background_window(self.iteration_count, &self.cpu, &self.graphics);
+          dbgr.update_debug_windows(self.iteration_count, &self.cpu, &self.graphics);
         }
       }
 
@@ -187,7 +187,7 @@ impl Emu {
           .debugger
           .as_mut()
           .unwrap()
-          .update_debug_background_window(self.iteration_count, &self.cpu, &self.graphics);
+          .update_debug_windows(self.iteration_count, &self.cpu, &self.graphics);
         return;
       }
       DebuggerCommand::Display => self.graphics.draw_display(),
@@ -196,7 +196,7 @@ impl Emu {
           .debugger
           .as_mut()
           .unwrap()
-          .update_debug_background_window(self.iteration_count, &self.cpu, &self.graphics);
+          .update_debug_windows(self.iteration_count, &self.cpu, &self.graphics);
       }
       DebuggerCommand::History => self.debugger.as_ref().unwrap().print_history(),
       _ => {}

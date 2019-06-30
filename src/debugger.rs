@@ -34,9 +34,10 @@ pub struct Debugger {
   breakpoints: HashSet<u16>,
   next_count: Option<usize>,
   bg_debug_canvas: WindowCanvas,
+  tile_debug_canvas: WindowCanvas,
   ttf_context: Sdl2TtfContext,
   pc_history: History<u16>,
-  background_on: bool,
+  debug_displays_on: bool,
   log: File,
   log_on: bool,
 }
@@ -44,7 +45,7 @@ pub struct Debugger {
 impl Debugger {
   pub fn new(sdl: Rc<Sdl>) -> Debugger {
     let video_subsystem = sdl.video().unwrap();
-    let debug_window = video_subsystem
+    let background_debug_window = video_subsystem
       .window(
         "Y.A.G.B.E. BACKGROUND DEBUG",
         256 * Debugger::scale() as u32,
@@ -55,13 +56,26 @@ impl Debugger {
       .build()
       .unwrap();
 
+
+    let tile_debug_window = video_subsystem
+      .window(
+        "Y.A.G.B.E. TILE DEBUG",
+        128 * Debugger::scale() as u32,
+        192 * Debugger::scale() as u32,
+      )
+      .position(32 + 416 * Debugger::scale() as i32 + 16, 64)
+      .opengl()
+      .build()
+      .unwrap();
+
     let mut debugger: Debugger = Debugger {
       breakpoints: HashSet::new(),
       next_count: None,
-      bg_debug_canvas: debug_window.into_canvas().build().unwrap(),
+      bg_debug_canvas: background_debug_window.into_canvas().build().unwrap(),
+      tile_debug_canvas: tile_debug_window.into_canvas().build().unwrap(),
       ttf_context: ttf::init().unwrap(),
       pc_history: History::with_capacity(4),
-      background_on: false,
+      debug_displays_on: false,
       log: File::create("./debug.log").unwrap(),
       log_on: false,
     };
@@ -139,11 +153,11 @@ impl Debugger {
       }
       "backgroundmap" | "bgmap" | "bgm" => DebuggerCommand::PrintBackgroundMap,
       "background-on" | "bg-on" => {
-        self.background_on = true;
+        self.debug_displays_on = true;
         DebuggerCommand::BackgroundOn
       }
       "background-off" | "bg-off" => {
-        self.background_on = false;
+        self.debug_displays_on = false;
         DebuggerCommand::BackgroundOff
       }
       "cpu" => DebuggerCommand::CpuPrint,
@@ -166,13 +180,18 @@ impl Debugger {
     }
   }
 
-  pub fn update_debug_background_window(
+  pub fn update_debug_windows(&mut self, iteration_count: u64, cpu: &Cpu, graphics: &Graphics) {
+    self.update_debug_background_window(iteration_count, cpu, graphics);
+    self.update_debug_tile_window(graphics);
+  }
+
+  fn update_debug_background_window(
     &mut self,
     iteration_count: u64,
     cpu: &Cpu,
     graphics: &Graphics,
   ) {
-    if !self.background_on {
+    if !self.debug_displays_on {
       return;
     }
 
@@ -256,6 +275,43 @@ impl Debugger {
     self.render_text(format!("LCDC 0b{:0>8b}", graphics.lcdc), 96);
 
     self.bg_debug_canvas.present();
+  }
+
+  fn update_debug_tile_window(&mut self, graphics: &Graphics) {
+    if !self.debug_displays_on {
+      return;
+    }
+
+    self.tile_debug_canvas.set_draw_color(Color::RGB(0, 0, 0));
+    self.tile_debug_canvas.clear();
+
+    // Background.
+    for row in 0..24 {
+      let orig_y = row * 8;
+
+      for col in 0..16 {
+        let orig_x = col * 8;
+        let tile_addr: usize = (row * 16 * 16) + (col * 16);
+
+        for iy in 0..8 {
+          for ix in 0..8 {
+            let color_bit_hi = (graphics.vmem[tile_addr + (iy * 2)] >> (7 - ix)) & 1;
+            let color_bit_lo = (graphics.vmem[tile_addr + (iy * 2) + 1] >> (7 - ix)) & 1;
+            let color_code = (color_bit_hi << 1) | color_bit_lo;
+            let color = graphics.color_bit_to_color(color_code);
+            self.tile_debug_canvas.set_draw_color(color.as_sdl_color());
+            let _ = self.tile_debug_canvas.fill_rect(Rect::new(
+              ((orig_x + ix) * Debugger::scale()) as i32,
+              ((orig_y + iy) * Debugger::scale()) as i32,
+              Debugger::scale() as u32,
+              Debugger::scale() as u32,
+            ));
+          }
+        }
+      }
+    }
+
+    self.tile_debug_canvas.present();
   }
 
   fn render_text(&mut self, text: String, offs_y: i32) {
