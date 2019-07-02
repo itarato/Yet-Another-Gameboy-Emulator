@@ -28,6 +28,8 @@ pub enum DebuggerCommand {
   BackgroundOff,
   LogOn,
   LogOff,
+  PrintCpuOn,
+  PrintCpuOff,
 }
 
 pub struct Debugger {
@@ -40,6 +42,7 @@ pub struct Debugger {
   debug_displays_on: bool,
   log: File,
   log_on: bool,
+  print_cpu: bool,
 }
 
 impl Debugger {
@@ -78,6 +81,7 @@ impl Debugger {
       debug_displays_on: false,
       log: File::create("./debug.log").unwrap(),
       log_on: false,
+      print_cpu: false,
     };
     // Break at start.
     debugger.breakpoints.insert(0x0);
@@ -89,6 +93,10 @@ impl Debugger {
 
     if self.log_on {
       let _ = write!(self.log, "PC: 0x{:>04x} |> AF: {:>02x}{:>02x} BC: {:>02x}{:>02x} DE: {:>02x}{:>02x} HL: {:>02x}{:>02x} |> SP {:>04x}\n", cpu.pc, cpu.reg_a, cpu.reg_f, cpu.reg_b, cpu.reg_c, cpu.reg_d, cpu.reg_e, cpu.reg_h, cpu.reg_l, cpu.sp);
+    }
+
+    if self.print_cpu {
+      println!("[YAGBE] -- PC: 0x{:>04x} |> AF: {:>02x}{:>02x} BC: {:>02x}{:>02x} DE: {:>02x}{:>02x} HL: {:>02x}{:>02x} |> SP {:>04x}\n", cpu.pc, cpu.reg_a, cpu.reg_f, cpu.reg_b, cpu.reg_c, cpu.reg_d, cpu.reg_e, cpu.reg_h, cpu.reg_l, cpu.sp)
     }
 
     if let Some(next_count) = self.next_count {
@@ -170,6 +178,14 @@ impl Debugger {
       "log-off" | "loff" => {
         self.log_on = false;
         DebuggerCommand::LogOff
+      }
+      "cpu-print-on" | "cp-on" => {
+        self.print_cpu = true;
+        DebuggerCommand::PrintCpuOn
+      }
+      "cpu-print-off" | "cp-off" => {
+        self.print_cpu = false;
+        DebuggerCommand::PrintCpuOff
       }
       "exit" | "e" | "quit" | "q" => DebuggerCommand::Quit,
       cmd @ _ => {

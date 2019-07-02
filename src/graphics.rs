@@ -213,9 +213,9 @@ impl Graphics {
     assert!(cycles_prev < cycles);
     let mut response = GraphicsUpdateResult::default();
 
-    if !self.is_screen_on() {
-      return response;
-    }
+    // if !self.is_screen_on() {
+    //   return response;
+    // }
 
     self.mode_timer += cycles - cycles_prev;
 

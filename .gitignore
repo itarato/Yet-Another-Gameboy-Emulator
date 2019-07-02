@@ -2,4 +2,4 @@
 **/*.rs.bk
 **/*.gb
 *.csv
-debug.log
+*.log

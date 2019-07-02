@@ -183,20 +183,20 @@ impl Emu {
       DebuggerCommand::CpuPrint => self.cpu.registers_debug_print(),
       DebuggerCommand::Breakpoint => { /* keep it stopped */ }
       DebuggerCommand::Continue | DebuggerCommand::Next => {
-        self
-          .debugger
-          .as_mut()
-          .unwrap()
-          .update_debug_windows(self.iteration_count, &self.cpu, &self.graphics);
+        self.debugger.as_mut().unwrap().update_debug_windows(
+          self.iteration_count,
+          &self.cpu,
+          &self.graphics,
+        );
         return;
       }
       DebuggerCommand::Display => self.graphics.draw_display(),
       DebuggerCommand::PrintBackgroundMap => {
-        self
-          .debugger
-          .as_mut()
-          .unwrap()
-          .update_debug_windows(self.iteration_count, &self.cpu, &self.graphics);
+        self.debugger.as_mut().unwrap().update_debug_windows(
+          self.iteration_count,
+          &self.cpu,
+          &self.graphics,
+        );
       }
       DebuggerCommand::History => self.debugger.as_ref().unwrap().print_history(),
       _ => {}
@@ -1557,6 +1557,9 @@ impl Emu {
       0xff50 => dbg!(self.internal_rom_disabled = true),
       0x8000...0x9fff => {
         // Video ram
+        if addr == 0x9820 {
+          println!("0x9820 <- {:#x} -> {:#x?}", w, self.cpu);
+        }
         self.graphics.write_word(addr, w);
       }
       0xa000...0xbfff => self.mem.write_word(addr, w),

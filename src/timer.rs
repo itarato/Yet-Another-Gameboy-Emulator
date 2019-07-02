@@ -59,7 +59,7 @@ impl Timer {
     match addr {
       0xff04 => self.div = 0x0,
       0xff06 => self.tma = w,
-      0xff07 => self.tac = w,
+      0xff07 => self.tac = w & 0b111,
       _ => unimplemented!("Timer reg write is not yet implemented on 0x{:>04x}", addr),
     }
   }
