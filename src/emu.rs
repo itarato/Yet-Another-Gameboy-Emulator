@@ -94,6 +94,7 @@ pub struct Emu {
   internal_rom_disabled: bool,
   sdl: Rc<Sdl>,
   iteration_count: u64,
+  is_stopped: bool,
 }
 
 impl Emu {
@@ -124,6 +125,7 @@ impl Emu {
       internal_rom_disabled: false,
       sdl: sdl.clone(),
       iteration_count: 0u64,
+      is_stopped: false,
     };
 
     emu.reset();
@@ -150,9 +152,16 @@ impl Emu {
       }
 
       self.interrupts_enabled_new_value = self.interrupts_enabled;
-      self.read_instruction();
+
+      if !self.is_stopped {
+        self.read_instruction();
+      }
+
       self.handle_timer(cycles_prev);
-      self.handle_graphics(cycles_prev);
+
+      if !self.is_stopped {
+        self.handle_graphics(cycles_prev);
+      }
       self.handle_input_check();
 
       self.handle_interrupts();
@@ -311,9 +320,20 @@ impl Emu {
       // 0x06 | LD B,d8 | 2 | 8 | - - - -
       0x06 => load_word_to_reg!(reg_b, self),
       // 0x07 | RLCA | 1 | 4 | 0 0 0 C
-      0x07 => unimplemented!("Opcode 0x07 is not yet implemented"),
+      0x07 => {
+        let bit7 = bitn!(self.cpu.reg_a, 7);
+        self.cpu.reg_a = self.cpu.reg_a << 1 | bit7;
+        self.cpu.reset_flag_add_sub();
+        self.cpu.reset_flag_half_carry();
+        self.cpu.reset_flag_zero();
+        self.cpu.set_flag_carry(bit7);
+      }
       // 0x08 | LD (a16),SP | 3 | 20 | - - - -
-      0x08 => unimplemented!("Opcode 0x08 is not yet implemented"),
+      0x08 => {
+        let addr = self.read_opcode_dword();
+        self.write_word(addr, self.cpu.sp.lo());
+        self.write_word(addr + 1, self.cpu.sp.hi());
+      }
       // 0x09 | ADD HL,BC | 1 | 8 | - 0 H C
       0x09 => add_to_hl!(reg_bc, self),
       // 0x0a | LD A,(BC) | 1 | 8 | - - - -
@@ -327,9 +347,16 @@ impl Emu {
       // 0x0e | LD C,d8 | 2 | 8 | - - - -
       0x0e => load_word_to_reg!(reg_c, self),
       // 0x0f | RRCA | 1 | 4 | 0 0 0 C
-      0x0f => unimplemented!("Opcode 0x0f is not yet implemented"),
+      0x0f => {
+        let bit0 = bitn!(self.cpu.reg_a, 0);
+        self.cpu.reg_a = self.cpu.reg_a >> 1 | (bit0 << 7);
+        self.cpu.reset_flag_add_sub();
+        self.cpu.reset_flag_half_carry();
+        self.cpu.reset_flag_zero();
+        self.cpu.set_flag_carry(bit0);
+      }
       // 0x10 | STOP 0 | 2 | 4 | - - - -
-      0x10 => unimplemented!("Opcode 0x10 is not yet implemented"),
+      0x10 => self.is_stopped = true,
       // 0x11 | LD DE,d16 | 3 | 12 | - - - -
       0x11 => load_dword_to_reg!(set_de, self),
       // 0x12 | LD (DE),A | 1 | 8 | - - - -
@@ -364,7 +391,7 @@ impl Emu {
       // 0x1a | LD A,(DE) | 1 | 8 | - - - -
       0x1a => load_word_to_reg_from_reg_addr!(reg_a, reg_d, reg_e, self),
       // 0x1b | DEC DE | 1 | 8 | - - - -
-      0x1b => unimplemented!("Opcode 0x1b is not yet implemented"),
+      0x1b => self.cpu.dec_de(),
       // 0x1c | INC E | 1 | 4 | Z 0 H -
       0x1c => op_inc_reg!(self, reg_e),
       // 0x1d | DEC E | 1 | 4 | Z 1 H -
@@ -632,21 +659,21 @@ impl Emu {
       // 0x87 | ADD A,A | 1 | 4 | Z 0 H C
       0x87 => op_add_to_a!(self, reg_a),
       // 0x88 | ADC A,B | 1 | 4 | Z 0 H C
-      0x88 => unimplemented!("Opcode 0x88 is not yet implemented"),
+      0x88 => adc_a!(self, reg_b),
       // 0x89 | ADC A,C | 1 | 4 | Z 0 H C
-      0x89 => unimplemented!("Opcode 0x89 is not yet implemented"),
+      0x89 => adc_a!(self, reg_c),
       // 0x8a | ADC A,D | 1 | 4 | Z 0 H C
-      0x8a => unimplemented!("Opcode 0x8a is not yet implemented"),
+      0x8a => adc_a!(self, reg_d),
       // 0x8b | ADC A,E | 1 | 4 | Z 0 H C
-      0x8b => unimplemented!("Opcode 0x8b is not yet implemented"),
+      0x8b => adc_a!(self, reg_e),
       // 0x8c | ADC A,H | 1 | 4 | Z 0 H C
-      0x8c => unimplemented!("Opcode 0x8c is not yet implemented"),
+      0x8c => adc_a!(self, reg_h),
       // 0x8d | ADC A,L | 1 | 4 | Z 0 H C
-      0x8d => unimplemented!("Opcode 0x8d is not yet implemented"),
+      0x8d => adc_a!(self, reg_l),
       // 0x8e | ADC A,(HL) | 1 | 8 | Z 0 H C
       0x8e => unimplemented!("Opcode 0x8e is not yet implemented"),
       // 0x8f | ADC A,A | 1 | 4 | Z 0 H C
-      0x8f => unimplemented!("Opcode 0x8f is not yet implemented"),
+      0x8f => adc_a!(self, reg_a),
       // 0x90 | SUB B | 1 | 4 | Z 1 H C
       0x90 => op_sub_reg_from_a!(self, reg_b),
       // 0x91 | SUB C | 1 | 4 | Z 1 H C
