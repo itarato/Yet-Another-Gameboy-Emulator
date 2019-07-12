@@ -793,7 +793,15 @@ impl Emu {
         self.cpu.pc = addr;
       }
       // 0xc4 | CALL NZ,a16 | 3 | 24/12 | - - - -
-      0xc4 => unimplemented!("Opcode 0xc4 is not yet implemented"),
+      0xc4 => {
+        if !self.cpu.flag_zero() {
+          let addr = self.read_opcode_dword();
+          self.push_dword(self.cpu.pc);
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xc5 | PUSH BC | 1 | 16 | - - - -
       0xc5 => self.push_dword(self.cpu.reg_bc()),
       // 0xc6 | ADD A,d8 | 2 | 8 | Z 0 H C
