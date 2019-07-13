@@ -119,6 +119,16 @@ impl BitNumerics for u16 {
   }
 }
 
+impl BitNumerics for u8 {
+  fn hi(&self) -> u8 {
+    (self >> 0x4) as u8
+  }
+
+  fn lo(&self) -> u8 {
+    (self & 0xf) as u8
+  }
+}
+
 #[cfg(test)]
 mod test {
   use super::*;

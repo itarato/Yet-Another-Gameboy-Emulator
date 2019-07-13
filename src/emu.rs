@@ -399,7 +399,15 @@ impl Emu {
       // 0x1e | LD E,d8 | 2 | 8 | - - - -
       0x1e => load_word_to_reg!(reg_e, self),
       // 0x1f | RRA | 1 | 4 | 0 0 0 C
-      0x1f => unimplemented!("Opcode 0x1f is not yet implemented"),
+      0x1f => {
+        let old_carry = self.cpu.flag_carry().as_bit();
+        self.cpu.set_flag_carry(bitn!(self.cpu.reg_a, 0));
+        self.cpu.reg_a = (self.cpu.reg_a >> 1) | (old_carry << 7);
+
+        self.cpu.reset_flag_zero();
+        self.cpu.reset_flag_add_sub();
+        self.cpu.reset_flag_half_carry();
+      }
       // 0x20 | JR NZ,r8 | 2 | 12/8 | - - - -
       0x20 => {
         let offs = self.read_opcode_word() as i8;
@@ -425,7 +433,42 @@ impl Emu {
       // 0x26 | LD H,d8 | 2 | 8 | - - - -
       0x26 => load_word_to_reg!(reg_h, self),
       // 0x27 | DAA | 1 | 4 | Z - 0 C
-      0x27 => unimplemented!("Opcode 0x27 is not yet implemented"),
+      0x27 => {
+        let mut acc = 0x0u8;
+
+        if !self.cpu.flag_add_sub() {
+          let carry_from_lo = if self.cpu.reg_a.lo() >= 0xa { 0x1 } else { 0x0 };
+
+          if self.cpu.flag_carry() || self.cpu.reg_a.hi() >= (0xa - carry_from_lo) {
+            acc |= 0x60;
+          }
+
+          if self.cpu.flag_half_carry() || self.cpu.reg_a.lo() >= 0xa {
+            acc |= 0x06;
+          }
+        } else {
+          if self.cpu.flag_half_carry() && self.cpu.reg_a.lo() >= 0x6 {
+            acc |= 0x0a;
+          }
+          if !self.cpu.flag_carry() && self.cpu.reg_a.hi() <= 0x8 {
+            acc |= 0xf0;
+          } else if self.cpu.flag_carry() && self.cpu.reg_a.hi() >= 0x7 {
+            acc |= 0xa0;
+          } else if self.cpu.flag_carry()
+            && self.cpu.reg_a.hi() >= 0x6
+            && self.cpu.flag_half_carry()
+          {
+            acc |= 0x90;
+          }
+        }
+
+        self
+          .cpu
+          .set_flag_carry(Util::has_carry(self.cpu.reg_a, acc).as_bit());
+
+        self.cpu.set_flag_zero_for(self.cpu.reg_a);
+        self.cpu.reset_flag_half_carry();
+      }
       // 0x28 | JR Z,r8 | 2 | 12/8 | - - - -
       0x28 => {
         let offs = self.read_opcode_word();
@@ -747,7 +790,14 @@ impl Emu {
       // 0xad | XOR L | 1 | 4 | Z 0 0 0
       0xad => xor_reg!(reg_l, self),
       // 0xae | XOR (HL) | 1 | 8 | Z 0 0 0
-      0xae => unimplemented!("Opcode 0xae is not yet implemented"),
+      0xae => {
+        let w = self.read_word(self.cpu.reg_hl(), false);
+        self.cpu.reg_a = self.cpu.reg_a ^ w;
+        self.cpu.set_flag_zero_for(self.cpu.reg_a);
+        self.cpu.reset_flag_add_sub();
+        self.cpu.reset_flag_half_carry();
+        self.cpu.reset_flag_carry();
+      }
       // 0xaf | XOR A | 1 | 4 | Z 0 0 0
       0xaf => xor_reg!(reg_a, self),
       // 0xb0 | OR B | 1 | 4 | Z 0 0 0
@@ -832,7 +882,18 @@ impl Emu {
       // 0xc5 | PUSH BC | 1 | 16 | - - - -
       0xc5 => self.push_dword(self.cpu.reg_bc()),
       // 0xc6 | ADD A,d8 | 2 | 8 | Z 0 H C
-      0xc6 => unimplemented!("Opcode 0xc6 is not yet implemented"),
+      0xc6 => {
+        let w = self.read_opcode_word();
+        self
+          .cpu
+          .set_flag_half_carry((Util::has_half_carry(self.cpu.reg_a, w)).as_bit());
+        self
+          .cpu
+          .set_flag_carry((Util::has_carry(self.cpu.reg_a, w)).as_bit());
+        self.cpu.reg_a = self.cpu.reg_a.wrapping_add(w);
+        self.cpu.set_flag_zero((self.cpu.reg_a == 0).as_bit());
+        self.cpu.reset_flag_add_sub();
+      }
       // 0xc7 | RST 00H | 1 | 16 | - - - -
       0xc7 => rst!(0x00, self),
       // 0xc8 | RET Z | 1 | 20/8 | - - - -
@@ -884,7 +945,20 @@ impl Emu {
       // 0xd5 | PUSH DE | 1 | 16 | - - - -
       0xd5 => self.push_dword(self.cpu.reg_de()),
       // 0xd6 | SUB d8 | 2 | 8 | Z 1 H C
-      0xd6 => unimplemented!("Opcode 0xd6 is not yet implemented"),
+      0xd6 => {
+        let w = self.read_opcode_word();
+        self
+          .cpu
+          .set_flag_half_carry(Util::has_half_borrow(self.cpu.reg_a, w).as_bit());
+
+        self
+          .cpu
+          .set_flag_carry(Util::has_borrow(self.cpu.reg_a, w).as_bit());
+
+        self.cpu.reg_a = self.cpu.reg_a.wrapping_sub(w);
+        self.cpu.set_flag_zero_for(self.cpu.reg_a);
+        self.cpu.set_flag_add_sub(0x1);
+      }
       // 0xd7 | RST 10H | 1 | 16 | - - - -
       0xd7 => rst!(0x10, self),
       // 0xd8 | RET C | 1 | 20/8 | - - - -
