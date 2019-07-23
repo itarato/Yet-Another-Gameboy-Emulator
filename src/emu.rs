@@ -1535,7 +1535,10 @@ impl Emu {
       // 0xc5 | SET 0,L | 2 | 8 | - - - -
       0xc5 => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 0, 1),
       // 0xc6 | SET 0,(HL) | 2 | 16 | - - - -
-      0xc6 => self.write_word(self.cpu.reg_hl(), Util::setbit(self.read_word(self.cpu.reg_hl(), false), 0, 1)),
+      0xc6 => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 0, 1),
+      ),
       // 0xc7 | SET 0,A | 2 | 8 | - - - -
       0xc7 => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 0, 1),
       // 0xc8 | SET 1,B | 2 | 8 | - - - -
@@ -1551,7 +1554,10 @@ impl Emu {
       // 0xcd | SET 1,L | 2 | 8 | - - - -
       0xcd => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 1, 1),
       // 0xce | SET 1,(HL) | 2 | 16 | - - - -
-      0xce => self.write_word(self.cpu.reg_hl(), Util::setbit(self.read_word(self.cpu.reg_hl(), false), 1, 1)),
+      0xce => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 1, 1),
+      ),
       // 0xcf | SET 1,A | 2 | 8 | - - - -
       0xcf => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 1, 1),
       // 0xd0 | SET 2,B | 2 | 8 | - - - -
@@ -1567,7 +1573,10 @@ impl Emu {
       // 0xd5 | SET 2,L | 2 | 8 | - - - -
       0xd5 => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 2, 1),
       // 0xd6 | SET 2,(HL) | 2 | 16 | - - - -
-      0xd6 => self.write_word(self.cpu.reg_hl(), Util::setbit(self.read_word(self.cpu.reg_hl(), false), 2, 1)),
+      0xd6 => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 2, 1),
+      ),
       // 0xd7 | SET 2,A | 2 | 8 | - - - -
       0xd7 => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 2, 1),
       // 0xd8 | SET 3,B | 2 | 8 | - - - -
@@ -1583,7 +1592,10 @@ impl Emu {
       // 0xdd | SET 3,L | 2 | 8 | - - - -
       0xdd => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 3, 1),
       // 0xde | SET 3,(HL) | 2 | 16 | - - - -
-      0xde => self.write_word(self.cpu.reg_hl(), Util::setbit(self.read_word(self.cpu.reg_hl(), false), 3, 1)),
+      0xde => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 3, 1),
+      ),
       // 0xdf | SET 3,A | 2 | 8 | - - - -
       0xdf => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 3, 1),
       // 0xe0 | SET 4,B | 2 | 8 | - - - -
@@ -1599,7 +1611,10 @@ impl Emu {
       // 0xe5 | SET 4,L | 2 | 8 | - - - -
       0xe5 => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 4, 1),
       // 0xe6 | SET 4,(HL) | 2 | 16 | - - - -
-      0xe6 => self.write_word(self.cpu.reg_hl(), Util::setbit(self.read_word(self.cpu.reg_hl(), false), 4, 1)),
+      0xe6 => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 4, 1),
+      ),
       // 0xe7 | SET 4,A | 2 | 8 | - - - -
       0xe7 => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 4, 1),
       // 0xe8 | SET 5,B | 2 | 8 | - - - -
@@ -1615,7 +1630,10 @@ impl Emu {
       // 0xed | SET 5,L | 2 | 8 | - - - -
       0xed => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 5, 1),
       // 0xee | SET 5,(HL) | 2 | 16 | - - - -
-      0xee => self.write_word(self.cpu.reg_hl(), Util::setbit(self.read_word(self.cpu.reg_hl(), false), 5, 1)),
+      0xee => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 5, 1),
+      ),
       // 0xef | SET 5,A | 2 | 8 | - - - -
       0xef => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 5, 1),
       // 0xf0 | SET 6,B | 2 | 8 | - - - -
@@ -1631,7 +1649,10 @@ impl Emu {
       // 0xf5 | SET 6,L | 2 | 8 | - - - -
       0xf5 => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 6, 1),
       // 0xf6 | SET 6,(HL) | 2 | 16 | - - - -
-      0xf6 => self.write_word(self.cpu.reg_hl(), Util::setbit(self.read_word(self.cpu.reg_hl(), false), 6, 1)),
+      0xf6 => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 6, 1),
+      ),
       // 0xf7 | SET 6,A | 2 | 8 | - - - -
       0xf7 => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 6, 1),
       // 0xf8 | SET 7,B | 2 | 8 | - - - -
@@ -1647,7 +1668,10 @@ impl Emu {
       // 0xfd | SET 7,L | 2 | 8 | - - - -
       0xfd => self.cpu.reg_l = Util::setbit(self.cpu.reg_l, 7, 1),
       // 0xfe | SET 7,(HL) | 2 | 16 | - - - -
-      0xfe => self.write_word(self.cpu.reg_hl(), Util::setbit(self.read_word(self.cpu.reg_hl(), false), 7, 1)),
+      0xfe => self.write_word(
+        self.cpu.reg_hl(),
+        Util::setbit(self.read_word(self.cpu.reg_hl(), false), 7, 1),
+      ),
       // 0xff | SET 7,A | 2 | 8 | - - - -
       0xff => self.cpu.reg_a = Util::setbit(self.cpu.reg_a, 7, 1),
     };
