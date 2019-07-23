@@ -299,9 +299,3 @@ macro_rules! op_add_to_a {
     $sel.cpu.reset_flag_add_sub();
   }};
 }
-
-macro_rules! op_set {
-  ($sel:ident, $reg:ident, $bit_num:expr) => {{
-    $sel.cpu.$reg = Util::setbit($sel.cpu.$reg, $bit_num, 0b1);
-  }};
-}
