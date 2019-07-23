@@ -13,7 +13,6 @@ use super::sound::*;
 use super::timer::*;
 use super::util::*;
 
-
 #[rustfmt::skip]
 const OPCODE_DUR: [u8; 256] = [
    4, 12,  8,  8,  4,  4,  8,  4, 20,  8,  8,  8,  4,  4,  8,  4,
@@ -823,17 +822,17 @@ impl Emu {
       // 0xb7 | OR A | 1 | 4 | Z 0 0 0
       0xb7 => or_reg!(reg_a, self),
       // 0xb8 | CP B | 1 | 4 | Z 1 H C
-      0xb8 => unimplemented!("Opcode 0xb8 is not yet implemented"),
+      0xb8 => op_cp_with_a!(self, reg_b),
       // 0xb9 | CP C | 1 | 4 | Z 1 H C
-      0xb9 => unimplemented!("Opcode 0xb9 is not yet implemented"),
+      0xb9 => op_cp_with_a!(self, reg_c),
       // 0xba | CP D | 1 | 4 | Z 1 H C
-      0xba => unimplemented!("Opcode 0xba is not yet implemented"),
+      0xba => op_cp_with_a!(self, reg_d),
       // 0xbb | CP E | 1 | 4 | Z 1 H C
-      0xbb => unimplemented!("Opcode 0xbb is not yet implemented"),
+      0xbb => op_cp_with_a!(self, reg_e),
       // 0xbc | CP H | 1 | 4 | Z 1 H C
-      0xbc => unimplemented!("Opcode 0xbc is not yet implemented"),
+      0xbc => op_cp_with_a!(self, reg_h),
       // 0xbd | CP L | 1 | 4 | Z 1 H C
-      0xbd => unimplemented!("Opcode 0xbd is not yet implemented"),
+      0xbd => op_cp_with_a!(self, reg_l),
       // 0xbe | CP (HL) | 1 | 8 | Z 1 H C
       0xbe => {
         let acc = self.read_word(self.cpu.reg_hl(), false);
@@ -847,7 +846,7 @@ impl Emu {
         self.cpu.set_flag_add_sub(0b1);
       }
       // 0xbf | CP A | 1 | 4 | Z 1 H C
-      0xbf => unimplemented!("Opcode 0xbf is not yet implemented"),
+      0xbf => op_cp_with_a!(self, reg_a),
       // 0xc0 | RET NZ | 1 | 20/8 | - - - -
       0xc0 => {
         if !self.cpu.flag_zero() {
@@ -1130,21 +1129,35 @@ impl Emu {
       // 0x17 | RL A | 2 | 8 | Z 0 0 C
       0x17 => rot_left_reg!(self, reg_a),
       // 0x18 | RR B | 2 | 8 | Z 0 0 C
-      0x18 => unimplemented!("Prefix opcode 0x18 is not yet implemented"),
+      0x18 => rr!(self, reg_b),
       // 0x19 | RR C | 2 | 8 | Z 0 0 C
-      0x19 => unimplemented!("Prefix opcode 0x19 is not yet implemented"),
+      0x19 => rr!(self, reg_c),
       // 0x1a | RR D | 2 | 8 | Z 0 0 C
-      0x1a => unimplemented!("Prefix opcode 0x1a is not yet implemented"),
+      0x1a => rr!(self, reg_d),
       // 0x1b | RR E | 2 | 8 | Z 0 0 C
-      0x1b => unimplemented!("Prefix opcode 0x1b is not yet implemented"),
+      0x1b => rr!(self, reg_e),
       // 0x1c | RR H | 2 | 8 | Z 0 0 C
-      0x1c => unimplemented!("Prefix opcode 0x1c is not yet implemented"),
+      0x1c => rr!(self, reg_h),
       // 0x1d | RR L | 2 | 8 | Z 0 0 C
-      0x1d => unimplemented!("Prefix opcode 0x1d is not yet implemented"),
+      0x1d => rr!(self, reg_l),
       // 0x1e | RR (HL) | 2 | 16 | Z 0 0 C
-      0x1e => unimplemented!("Prefix opcode 0x1e is not yet implemented"),
+      0x1e => {
+        let addr = self.cpu.reg_hl();
+        let mut w = self.read_word(addr, false);
+
+        let old_carry = self.cpu.flag_carry().as_bit();
+        self.cpu.set_flag_carry(bitn!(w, 0));
+
+        w = (w >> 1) | (old_carry << 7);
+
+        self.write_word(addr, w);
+        self.cpu.set_flag_zero_for(w);
+
+        self.cpu.reset_flag_add_sub();
+        self.cpu.reset_flag_half_carry();
+      }
       // 0x1f | RR A | 2 | 8 | Z 0 0 C
-      0x1f => unimplemented!("Prefix opcode 0x1f is not yet implemented"),
+      0x1f => rr!(self, reg_a),
       // 0x20 | SLA B | 2 | 8 | Z 0 0 C
       0x20 => unimplemented!("Prefix opcode 0x20 is not yet implemented"),
       // 0x21 | SLA C | 2 | 8 | Z 0 0 C
@@ -1202,21 +1215,33 @@ impl Emu {
       // 0x37 | SWAP A | 2 | 8 | Z 0 0 0
       0x37 => swap!(reg_a, self),
       // 0x38 | SRL B | 2 | 8 | Z 0 0 C
-      0x38 => unimplemented!("Prefix opcode 0x38 is not yet implemented"),
+      0x38 => srl!(self, reg_b),
       // 0x39 | SRL C | 2 | 8 | Z 0 0 C
-      0x39 => unimplemented!("Prefix opcode 0x39 is not yet implemented"),
+      0x39 => srl!(self, reg_c),
       // 0x3a | SRL D | 2 | 8 | Z 0 0 C
-      0x3a => unimplemented!("Prefix opcode 0x3a is not yet implemented"),
+      0x3a => srl!(self, reg_d),
       // 0x3b | SRL E | 2 | 8 | Z 0 0 C
-      0x3b => unimplemented!("Prefix opcode 0x3b is not yet implemented"),
+      0x3b => srl!(self, reg_e),
       // 0x3c | SRL H | 2 | 8 | Z 0 0 C
-      0x3c => unimplemented!("Prefix opcode 0x3c is not yet implemented"),
+      0x3c => srl!(self, reg_h),
       // 0x3d | SRL L | 2 | 8 | Z 0 0 C
-      0x3d => unimplemented!("Prefix opcode 0x3d is not yet implemented"),
+      0x3d => srl!(self, reg_l),
       // 0x3e | SRL (HL) | 2 | 16 | Z 0 0 C
-      0x3e => unimplemented!("Prefix opcode 0x3e is not yet implemented"),
+      0x3e => {
+        let addr = self.cpu.reg_hl();
+        let mut w = self.read_word(addr, false);
+
+        self.cpu.set_flag_carry(bitn!(w, 0));
+
+        w = w >> 1;
+        self.write_word(addr, w);
+        self.cpu.set_flag_zero_for(w);
+
+        self.cpu.reset_flag_add_sub();
+        self.cpu.reset_flag_half_carry();
+      }
       // 0x3f | SRL A | 2 | 8 | Z 0 0 C
-      0x3f => unimplemented!("Prefix opcode 0x3f is not yet implemented"),
+      0x3f => srl!(self, reg_a),
       // 0x40 | BIT 0,B | 2 | 8 | Z 0 1 -
       0x40 => op_bit_test!(self, reg_b, 0),
       // 0x41 | BIT 0,C | 2 | 8 | Z 0 1 -
@@ -1641,7 +1666,6 @@ impl Emu {
           } else {
             self.dmg_rom[addr as usize]
           }
-
         }
         _ => self.rom[addr as usize],
       },

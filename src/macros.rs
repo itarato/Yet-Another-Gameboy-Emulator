@@ -245,6 +245,31 @@ macro_rules! adc_a {
   }};
 }
 
+macro_rules! srl {
+  ($sel:ident, $reg:ident) => {{
+    $sel.cpu.set_flag_carry(bitn!($sel.cpu.$reg, 0));
+
+    $sel.cpu.$reg = $sel.cpu.$reg >> 1;
+    $sel.cpu.set_flag_zero_for($sel.cpu.$reg);
+
+    $sel.cpu.reset_flag_add_sub();
+    $sel.cpu.reset_flag_half_carry();
+  }};
+}
+
+macro_rules! rr {
+  ($sel:ident, $reg:ident) => {{
+    let old_carry = $sel.cpu.flag_carry().as_bit();
+    $sel.cpu.set_flag_carry(bitn!($sel.cpu.$reg, 0));
+
+    $sel.cpu.$reg = ($sel.cpu.$reg >> 1) | (old_carry << 7);
+    $sel.cpu.set_flag_zero_for($sel.cpu.$reg);
+
+    $sel.cpu.reset_flag_add_sub();
+    $sel.cpu.reset_flag_half_carry();
+  }};
+}
+
 macro_rules! op_cp_with_a {
   ($sel:ident, $reg:ident) => {{
     $sel
@@ -272,5 +297,11 @@ macro_rules! op_add_to_a {
     $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_add($sel.cpu.$reg);
     $sel.cpu.set_flag_zero(($sel.cpu.reg_a == 0).as_bit());
     $sel.cpu.reset_flag_add_sub();
+  }};
+}
+
+macro_rules! op_set {
+  ($sel:ident, $reg:ident, $bit_num:expr) => {{
+    $sel.cpu.$reg = Util::setbit($sel.cpu.$reg, $bit_num, 0b1);
   }};
 }
