@@ -240,16 +240,16 @@ impl Emu {
       self.cpu.pc = 0x40;
       self.cycles += 1;
     // TODO These cycle advances needs to be considered for tick detection!!! -> Maybe not needed.
-    } else if self.interrupt_enabled_lcd_stat() {
+    } else if self.interrupt_enabled_lcd_stat() && self.interrupt_flag_lcd_stat() {
       unimplemented!("<lcd_stat> interrupt has not been implemented.");
-    } else if self.interrupt_enabled_timer() {
+    } else if self.interrupt_enabled_timer() && self.interrupt_flag_timer() {
       unimplemented!("<timer> interrupt has not been implemented.");
     } else if self.interrupt_enabled_serial() && self.interrupt_flag_serial() {
       unimplemented!(
         "<serial> interrupt has not been implemented.\n{:?}",
         self.debugger.as_ref().map(|dbgr| dbgr.dump(&self))
       );
-    } else if self.interrupt_enabled_joypad() {
+    } else if self.interrupt_enabled_joypad() && self.interrupt_flag_joypad() {
       unimplemented!("<joypad> interrupt has not been implemented.");
     }
   }
@@ -782,66 +782,53 @@ impl Emu {
       // 0x9f | SBC A,A | 1 | 4 | Z 1 H C
       0x9f => unimplemented!("Opcode 0x9f is not yet implemented"),
       // 0xa0 | AND B | 1 | 4 | Z 0 1 0
-      0xa0 => and_reg!(reg_b, self),
+      0xa0 => and_reg!(self, self.cpu.reg_b),
       // 0xa1 | AND C | 1 | 4 | Z 0 1 0
-      0xa1 => and_reg!(reg_c, self),
+      0xa1 => and_reg!(self, self.cpu.reg_c),
       // 0xa2 | AND D | 1 | 4 | Z 0 1 0
-      0xa2 => and_reg!(reg_d, self),
+      0xa2 => and_reg!(self, self.cpu.reg_d),
       // 0xa3 | AND E | 1 | 4 | Z 0 1 0
-      0xa3 => and_reg!(reg_e, self),
+      0xa3 => and_reg!(self, self.cpu.reg_e),
       // 0xa4 | AND H | 1 | 4 | Z 0 1 0
-      0xa4 => and_reg!(reg_h, self),
+      0xa4 => and_reg!(self, self.cpu.reg_h),
       // 0xa5 | AND L | 1 | 4 | Z 0 1 0
-      0xa5 => and_reg!(reg_l, self),
+      0xa5 => and_reg!(self, self.cpu.reg_l),
       // 0xa6 | AND (HL) | 1 | 8 | Z 0 1 0
-      0xa6 => unimplemented!("Opcode 0xa6 is not yet implemented"),
+      0xa6 => and_reg!(self, self.read_word(self.cpu.reg_hl(), false)),
       // 0xa7 | AND A | 1 | 4 | Z 0 1 0
-      0xa7 => and_reg!(reg_a, self),
+      0xa7 => and_reg!(self, self.cpu.reg_a),
       // 0xa8 | XOR B | 1 | 4 | Z 0 0 0
-      0xa8 => xor_reg!(reg_b, self),
+      0xa8 => xor_reg!(self, self.cpu.reg_b),
       // 0xa9 | XOR C | 1 | 4 | Z 0 0 0
-      0xa9 => xor_reg!(reg_c, self),
+      0xa9 => xor_reg!(self, self.cpu.reg_c),
       // 0xaa | XOR D | 1 | 4 | Z 0 0 0
-      0xaa => xor_reg!(reg_d, self),
+      0xaa => xor_reg!(self, self.cpu.reg_d),
       // 0xab | XOR E | 1 | 4 | Z 0 0 0
-      0xab => xor_reg!(reg_e, self),
+      0xab => xor_reg!(self, self.cpu.reg_e),
       // 0xac | XOR H | 1 | 4 | Z 0 0 0
-      0xac => xor_reg!(reg_h, self),
+      0xac => xor_reg!(self, self.cpu.reg_h),
       // 0xad | XOR L | 1 | 4 | Z 0 0 0
-      0xad => xor_reg!(reg_l, self),
+      0xad => xor_reg!(self, self.cpu.reg_l),
       // 0xae | XOR (HL) | 1 | 8 | Z 0 0 0
-      0xae => {
-        let w = self.read_word(self.cpu.reg_hl(), false);
-        self.cpu.reg_a = self.cpu.reg_a ^ w;
-        self.cpu.set_flag_zero_for(self.cpu.reg_a);
-        self.cpu.reset_flag_add_sub();
-        self.cpu.reset_flag_half_carry();
-        self.cpu.reset_flag_carry();
-      }
+      0xae => xor_reg!(self, self.read_word(self.cpu.reg_hl(), false)),
       // 0xaf | XOR A | 1 | 4 | Z 0 0 0
-      0xaf => xor_reg!(reg_a, self),
+      0xaf => xor_reg!(self, self.cpu.reg_a),
       // 0xb0 | OR B | 1 | 4 | Z 0 0 0
-      0xb0 => or_reg!(reg_b, self),
+      0xb0 => or_reg!(self, self.cpu.reg_b),
       // 0xb1 | OR C | 1 | 4 | Z 0 0 0
-      0xb1 => or_reg!(reg_c, self),
+      0xb1 => or_reg!(self, self.cpu.reg_c),
       // 0xb2 | OR D | 1 | 4 | Z 0 0 0
-      0xb2 => or_reg!(reg_d, self),
+      0xb2 => or_reg!(self, self.cpu.reg_d),
       // 0xb3 | OR E | 1 | 4 | Z 0 0 0
-      0xb3 => or_reg!(reg_e, self),
+      0xb3 => or_reg!(self, self.cpu.reg_e),
       // 0xb4 | OR H | 1 | 4 | Z 0 0 0
-      0xb4 => or_reg!(reg_h, self),
+      0xb4 => or_reg!(self, self.cpu.reg_h),
       // 0xb5 | OR L | 1 | 4 | Z 0 0 0
-      0xb5 => or_reg!(reg_l, self),
+      0xb5 => or_reg!(self, self.cpu.reg_l),
       // 0xb6 | OR (HL) | 1 | 8 | Z 0 0 0
-      0xb6 => {
-        self.cpu.reg_a = self.cpu.reg_a | self.read_word(self.cpu.reg_hl(), false);
-        self.cpu.set_flag_zero_for(self.cpu.reg_a);
-        self.cpu.reset_flag_add_sub();
-        self.cpu.reset_flag_half_carry();
-        self.cpu.reset_flag_carry();
-      }
+      0xb6 => or_reg!(self, self.read_word(self.cpu.reg_hl(), false)),
       // 0xb7 | OR A | 1 | 4 | Z 0 0 0
-      0xb7 => or_reg!(reg_a, self),
+      0xb7 => or_reg!(self, self.cpu.reg_a),
       // 0xb8 | CP B | 1 | 4 | Z 1 H C
       0xb8 => op_cp_with_a!(self, reg_b),
       // 0xb9 | CP C | 1 | 4 | Z 1 H C
@@ -883,7 +870,14 @@ impl Emu {
         self.cpu.set_bc(dw);
       }
       // 0xc2 | JP NZ,a16 | 3 | 16/12 | - - - -
-      0xc2 => unimplemented!("Opcode 0xc2 is not yet implemented"),
+      0xc2 => {
+        let addr = self.read_opcode_dword();
+        if !self.cpu.flag_zero() {
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xc3 | JP a16 | 3 | 16 | - - - -
       0xc3 => {
         let addr = self.read_opcode_dword();
@@ -1080,7 +1074,7 @@ impl Emu {
       // 0xf5 | PUSH AF | 1 | 16 | - - - -
       0xf5 => self.push_dword(self.cpu.reg_af()),
       // 0xf6 | OR d8 | 2 | 8 | Z 0 0 0
-      0xf6 => unimplemented!("Opcode 0xf6 is not yet implemented"),
+      0xf6 => or_reg!(self, self.read_opcode_word()),
       // 0xf7 | RST 30H | 1 | 16 | - - - -
       0xf7 => rst!(0x30, self),
       // 0xf8 | LD HL,SP+r8 | 2 | 12 | 0 0 H C

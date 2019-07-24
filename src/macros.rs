@@ -86,8 +86,8 @@ macro_rules! load_word_to_reg_addr {
 }
 
 macro_rules! xor_reg {
-  ($reg:ident, $sel:ident) => {{
-    $sel.cpu.reg_a = $sel.cpu.reg_a ^ $sel.cpu.$reg;
+  ($sel:ident, $reg:expr) => {{
+    $sel.cpu.reg_a = $sel.cpu.reg_a ^ $reg;
     $sel.cpu.set_flag_zero_for($sel.cpu.reg_a);
     $sel.cpu.reset_flag_add_sub();
     $sel.cpu.reset_flag_half_carry();
@@ -96,8 +96,8 @@ macro_rules! xor_reg {
 }
 
 macro_rules! or_reg {
-  ($reg:ident, $sel:ident) => {{
-    $sel.cpu.reg_a = $sel.cpu.reg_a | $sel.cpu.$reg;
+  ($sel:ident, $reg:expr) => {{
+    $sel.cpu.reg_a = $sel.cpu.reg_a | $reg;
     $sel.cpu.set_flag_zero_for($sel.cpu.reg_a);
     $sel.cpu.reset_flag_add_sub();
     $sel.cpu.reset_flag_half_carry();
@@ -106,8 +106,8 @@ macro_rules! or_reg {
 }
 
 macro_rules! and_reg {
-  ($reg:ident, $sel:ident) => {{
-    $sel.cpu.reg_a = $sel.cpu.reg_a & $sel.cpu.$reg;
+  ($sel:ident, $reg:expr) => {{
+    $sel.cpu.reg_a = $sel.cpu.reg_a & $reg;
     $sel.cpu.set_flag_zero_for($sel.cpu.reg_a);
     $sel.cpu.reset_flag_add_sub();
     $sel.cpu.set_flag_half_carry(0x1);
