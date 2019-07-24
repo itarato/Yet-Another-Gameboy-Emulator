@@ -69,7 +69,7 @@ impl Cpu {
     let pc = self.pc;
     self.pc += 1;
 
-    if self.pc >= 0x8000 && (self.pc < 0xd000 || self.pc > 0xfffe) {
+    if self.pc >= 0x8000 && (self.pc < 0xc000 || self.pc > 0xfffe) {
       unimplemented!(
         "PC is out of standard rom bank space: 0x{:>04x}\n{:#x?}",
         self.pc,

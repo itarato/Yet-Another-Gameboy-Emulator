@@ -21,6 +21,10 @@ impl Util {
     (w & 0xf) < (acc & 0xf)
   }
 
+  pub fn has_dw_half_borrow(w: u16, acc: u16) -> bool {
+    (w & 0xfff) < (acc & 0xfff)
+  }
+
   pub fn has_carry(w: u8, acc: u8) -> bool {
     (w as u16) + (acc as u16) > 0xff
   }
@@ -30,6 +34,10 @@ impl Util {
   }
 
   pub fn has_borrow(w: u8, acc: u8) -> bool {
+    w < acc
+  }
+
+  pub fn has_dw_borrow(w: u16, acc: u16) -> bool {
     w < acc
   }
 
