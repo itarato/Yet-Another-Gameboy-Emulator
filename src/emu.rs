@@ -484,7 +484,7 @@ impl Emu {
         self.cpu.inc_hl();
       }
       // 0x2b | DEC HL | 1 | 8 | - - - -
-      0x2b => unimplemented!("Opcode 0x2b is not yet implemented"),
+      0x2b => self.cpu.dec_hl(),
       // 0x2c | INC L | 1 | 4 | Z 0 H -
       0x2c => op_inc_reg!(self, reg_l),
       // 0x2d | DEC L | 1 | 4 | Z 1 H -
@@ -527,7 +527,15 @@ impl Emu {
         self.write_word(self.cpu.reg_hl(), w_new);
       }
       // 0x35 | DEC (HL) | 1 | 12 | Z 1 H -
-      0x35 => unimplemented!("Opcode 0x35 is not yet implemented"),
+      0x35 => {
+        let mut w = self.read_word(self.cpu.reg_hl(), false);
+        self
+          .cpu
+          .set_flag_half_carry(Util::has_half_borrow(w, 0b1).as_bit());
+        w = w.wrapping_sub(0b1);
+        self.cpu.set_flag_zero_for(w);
+        self.cpu.set_flag_add_sub(0b1);
+      }
       // 0x36 | LD (HL),d8 | 2 | 12 | - - - -
       0x36 => load_word_to_reg_addr!(reg_h, reg_l, self),
       // 0x37 | SCF | 1 | 4 | - 0 0 1
@@ -883,8 +891,8 @@ impl Emu {
       }
       // 0xc4 | CALL NZ,a16 | 3 | 24/12 | - - - -
       0xc4 => {
+        let addr = self.read_opcode_dword();
         if !self.cpu.flag_zero() {
-          let addr = self.read_opcode_dword();
           self.push_dword(self.cpu.pc);
           self.cpu.pc = addr;
         } else {
@@ -922,8 +930,8 @@ impl Emu {
       0xc9 => self.cpu.pc = self.pop_dword(),
       // 0xca | JP Z,a16 | 3 | 16/12 | - - - -
       0xca => {
+        let addr = self.read_opcode_dword();
         if self.cpu.flag_zero() {
-          let addr = self.read_opcode_dword();
           self.cpu.pc = addr;
         } else {
           is_cycle_alternative = true;
