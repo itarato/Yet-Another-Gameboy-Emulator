@@ -714,21 +714,21 @@ impl Emu {
       // 0x87 | ADD A,A | 1 | 4 | Z 0 H C
       0x87 => op_add_to_a!(self, reg_a),
       // 0x88 | ADC A,B | 1 | 4 | Z 0 H C
-      0x88 => adc_a!(self, reg_b),
+      0x88 => adc_a!(self, self.cpu.reg_b),
       // 0x89 | ADC A,C | 1 | 4 | Z 0 H C
-      0x89 => adc_a!(self, reg_c),
+      0x89 => adc_a!(self, self.cpu.reg_c),
       // 0x8a | ADC A,D | 1 | 4 | Z 0 H C
-      0x8a => adc_a!(self, reg_d),
+      0x8a => adc_a!(self, self.cpu.reg_d),
       // 0x8b | ADC A,E | 1 | 4 | Z 0 H C
-      0x8b => adc_a!(self, reg_e),
+      0x8b => adc_a!(self, self.cpu.reg_e),
       // 0x8c | ADC A,H | 1 | 4 | Z 0 H C
-      0x8c => adc_a!(self, reg_h),
+      0x8c => adc_a!(self, self.cpu.reg_h),
       // 0x8d | ADC A,L | 1 | 4 | Z 0 H C
-      0x8d => adc_a!(self, reg_l),
+      0x8d => adc_a!(self, self.cpu.reg_l),
       // 0x8e | ADC A,(HL) | 1 | 8 | Z 0 H C
-      0x8e => unimplemented!("Opcode 0x8e is not yet implemented"),
+      0x8e => adc_a!(self, self.read_word(self.cpu.reg_hl(), false)),
       // 0x8f | ADC A,A | 1 | 4 | Z 0 H C
-      0x8f => adc_a!(self, reg_a),
+      0x8f => adc_a!(self, self.cpu.reg_a),
       // 0x90 | SUB B | 1 | 4 | Z 1 H C
       0x90 => op_sub_reg_from_a!(self, reg_b),
       // 0x91 | SUB C | 1 | 4 | Z 1 H C
@@ -940,11 +940,21 @@ impl Emu {
         self.cpu.pc = addr;
       }
       // 0xce | ADC A,d8 | 2 | 8 | Z 0 H C
-      0xce => unimplemented!("Opcode 0xce is not yet implemented"),
+      0xce => {
+        let w = self.read_opcode_word();
+        adc_a!(self, w);
+      }
       // 0xcf | RST 08H | 1 | 16 | - - - -
       0xcf => rst!(0x08, self),
       // 0xd0 | RET NC | 1 | 20/8 | - - - -
-      0xd0 => unimplemented!("Opcode 0xd0 is not yet implemented"),
+      0xd0 => {
+        if !self.cpu.flag_carry() {
+          let addr = self.pop_dword();
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xd1 | POP DE | 1 | 12 | - - - -
       0xd1 => {
         let dw = self.pop_dword();
@@ -974,7 +984,14 @@ impl Emu {
       // 0xd7 | RST 10H | 1 | 16 | - - - -
       0xd7 => rst!(0x10, self),
       // 0xd8 | RET C | 1 | 20/8 | - - - -
-      0xd8 => unimplemented!("Opcode 0xd8 is not yet implemented"),
+      0xd8 => {
+        if self.cpu.flag_carry() {
+          let addr = self.pop_dword();
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xd9 | RETI | 1 | 16 | - - - -
       0xd9 => {
         // panic!("{:#x?} {:#x?} {:#x?}", self.cpu, self.pre_interrupt_status, self.read_word(0xff0f, false));
