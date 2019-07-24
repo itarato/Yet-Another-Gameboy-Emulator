@@ -382,8 +382,7 @@ impl Emu {
       // 0x18 | JR r8 | 2 | 12 | - - - -
       0x18 => {
         let offs = self.read_opcode_word();
-        let addr = Util::dword_signed_add(self.cpu.pc, offs as i8);
-        self.cpu.pc = addr;
+        self.cpu.pc = Util::dword_signed_add(self.cpu.pc, offs as i8);
       }
       // 0x19 | ADD HL,DE | 1 | 8 | - 0 H C
       0x19 => add_to_hl!(reg_de, self),
@@ -411,7 +410,7 @@ impl Emu {
       0x20 => {
         let offs = self.read_opcode_word() as i8;
         if !self.cpu.flag_zero() {
-          self.cpu.pc = (self.cpu.pc as i16 + offs as i16) as u16;
+          self.cpu.pc = Util::dword_signed_add(self.cpu.pc, offs as i8);
         } else {
           is_cycle_alternative = true;
         }
@@ -472,7 +471,7 @@ impl Emu {
       0x28 => {
         let offs = self.read_opcode_word();
         if self.cpu.flag_zero() {
-          self.cpu.pc += offs as u16;
+          self.cpu.pc = Util::dword_signed_add(self.cpu.pc, offs as i8);
         } else {
           is_cycle_alternative = true;
         }
@@ -499,7 +498,14 @@ impl Emu {
         self.cpu.set_flag_half_carry(0x1);
       }
       // 0x30 | JR NC,r8 | 2 | 12/8 | - - - -
-      0x30 => unimplemented!("Opcode 0x30 is not yet implemented"),
+      0x30 => {
+        let offs = self.read_opcode_word();
+        if !self.cpu.flag_carry() {
+          self.cpu.pc = Util::dword_signed_add(self.cpu.pc, offs as i8);
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0x31 | LD SP,d16 | 3 | 12 | - - - -
       0x31 => self.cpu.sp = self.read_opcode_dword(),
       // 0x32 | LD (HL-),A | 1 | 8 | - - - -
@@ -527,7 +533,14 @@ impl Emu {
       // 0x37 | SCF | 1 | 4 | - 0 0 1
       0x37 => unimplemented!("Opcode 0x37 is not yet implemented"),
       // 0x38 | JR C,r8 | 2 | 12/8 | - - - -
-      0x38 => unimplemented!("Opcode 0x38 is not yet implemented"),
+      0x38 => {
+        let offs = self.read_opcode_word();
+        if self.cpu.flag_carry() {
+          self.cpu.pc = Util::dword_signed_add(self.cpu.pc, offs as i8);
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0x39 | ADD HL,SP | 1 | 8 | - 0 H C
       0x39 => add_to_hl!(reg_sp, self),
       // 0x3a | LD A,(HL-) | 1 | 8 | - - - -
@@ -1015,7 +1028,14 @@ impl Emu {
         self.write_word(addr, self.cpu.reg_a);
       }
       // 0xee | XOR d8 | 2 | 8 | Z 0 0 0
-      0xee => unimplemented!("Opcode 0xee is not yet implemented"),
+      0xee => {
+        let w = self.read_opcode_word();
+        self.cpu.reg_a = self.cpu.reg_a ^ w;
+        self.cpu.set_flag_zero_for(self.cpu.reg_a);
+        self.cpu.reset_flag_add_sub();
+        self.cpu.reset_flag_half_carry();
+        self.cpu.reset_flag_carry();
+      }
       // 0xef | RST 28H | 1 | 16 | - - - -
       0xef => rst!(0x28, self),
       // 0xf0 | LDH A,(a8) | 2 | 12 | - - - -
