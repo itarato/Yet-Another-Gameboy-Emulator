@@ -1079,26 +1079,19 @@ impl Emu {
       0xf7 => rst!(0x30, self),
       // 0xf8 | LD HL,SP+r8 | 2 | 12 | 0 0 H C
       0xf8 => {
-        let offs = self.read_opcode_word() as i8;
+        let w = self.read_opcode_word();
+        let offs = w as i8;
         let dw = Util::dword_signed_add(self.cpu.sp, offs);
 
         self.cpu.reset_flag_zero();
         self.cpu.reset_flag_add_sub();
-        if offs >= 0 {
-          self
-            .cpu
-            .set_flag_half_carry(Util::has_dw_half_carry(self.cpu.sp, offs as u16).as_bit());
-          self
-            .cpu
-            .set_flag_carry(Util::has_dw_carry(self.cpu.sp, offs as u16).as_bit());
-        } else {
-          self
-            .cpu
-            .set_flag_half_carry(Util::has_dw_half_borrow(self.cpu.sp, offs.abs() as u16).as_bit());
-          self
-            .cpu
-            .set_flag_carry(Util::has_dw_borrow(self.cpu.sp, offs.abs() as u16).as_bit());
-        }
+        
+        self
+          .cpu
+          .set_flag_half_carry(Util::has_dw_half_carry(self.cpu.sp, w as u16).as_bit());
+        self
+          .cpu
+          .set_flag_carry(Util::has_dw_carry(self.cpu.sp, w as u16).as_bit());
 
         self.cpu.set_hl(dw);
       }
