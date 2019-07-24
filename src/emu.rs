@@ -1103,7 +1103,7 @@ impl Emu {
         self.cpu.set_hl(dw);
       }
       // 0xf9 | LD SP,HL | 1 | 8 | - - - -
-      0xf9 => unimplemented!("Opcode 0xf9 is not yet implemented"),
+      0xf9 => self.cpu.sp = self.cpu.reg_hl(),
       // 0xfa | LD A,(a16) | 3 | 16 | - - - -
       0xfa => load_word_to_reg_from_dword_addr!(reg_a, self),
       // 0xfb | EI | 1 | 4 | - - - -
