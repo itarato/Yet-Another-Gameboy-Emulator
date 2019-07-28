@@ -271,17 +271,15 @@ macro_rules! rr {
 }
 
 macro_rules! op_cp_with_a {
-  ($sel:ident, $reg:ident) => {{
+  ($sel:ident, $reg:expr) => {{
     $sel
       .cpu
-      .set_flag_half_carry(Util::has_half_borrow($sel.cpu.reg_a, $sel.cpu.$reg).as_bit());
+      .set_flag_half_carry(Util::has_half_borrow($sel.cpu.reg_a, $reg).as_bit());
     $sel
       .cpu
-      .set_flag_carry(Util::has_borrow($sel.cpu.reg_a, $sel.cpu.$reg).as_bit());
+      .set_flag_carry(Util::has_borrow($sel.cpu.reg_a, $reg).as_bit());
 
-    $sel
-      .cpu
-      .set_flag_zero(($sel.cpu.reg_a == $sel.cpu.$reg).as_bit());
+    $sel.cpu.set_flag_zero(($sel.cpu.reg_a == $reg).as_bit());
     $sel.cpu.set_flag_add_sub(0b1);
   }};
 }

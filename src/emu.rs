@@ -515,7 +515,7 @@ impl Emu {
         self.cpu.dec_hl();
       }
       // 0x33 | INC SP | 1 | 8 | - - - -
-      0x33 => unimplemented!("Opcode 0x33 is not yet implemented"),
+      0x33 => self.cpu.sp = self.cpu.sp.wrapping_add(1),
       // 0x34 | INC (HL) | 1 | 12 | Z 0 H -
       0x34 => {
         let w_orig = self.read_word(self.cpu.reg_hl(), false);
@@ -808,31 +808,21 @@ impl Emu {
       // 0xb7 | OR A | 1 | 4 | Z 0 0 0
       0xb7 => or_reg!(self, self.cpu.reg_a),
       // 0xb8 | CP B | 1 | 4 | Z 1 H C
-      0xb8 => op_cp_with_a!(self, reg_b),
+      0xb8 => op_cp_with_a!(self, self.cpu.reg_b),
       // 0xb9 | CP C | 1 | 4 | Z 1 H C
-      0xb9 => op_cp_with_a!(self, reg_c),
+      0xb9 => op_cp_with_a!(self, self.cpu.reg_c),
       // 0xba | CP D | 1 | 4 | Z 1 H C
-      0xba => op_cp_with_a!(self, reg_d),
+      0xba => op_cp_with_a!(self, self.cpu.reg_d),
       // 0xbb | CP E | 1 | 4 | Z 1 H C
-      0xbb => op_cp_with_a!(self, reg_e),
+      0xbb => op_cp_with_a!(self, self.cpu.reg_e),
       // 0xbc | CP H | 1 | 4 | Z 1 H C
-      0xbc => op_cp_with_a!(self, reg_h),
+      0xbc => op_cp_with_a!(self, self.cpu.reg_h),
       // 0xbd | CP L | 1 | 4 | Z 1 H C
-      0xbd => op_cp_with_a!(self, reg_l),
+      0xbd => op_cp_with_a!(self, self.cpu.reg_l),
       // 0xbe | CP (HL) | 1 | 8 | Z 1 H C
-      0xbe => {
-        let acc = self.read_word(self.cpu.reg_hl(), false);
-        self
-          .cpu
-          .set_flag_half_carry(Util::has_half_borrow(self.cpu.reg_a, acc).as_bit());
-        self
-          .cpu
-          .set_flag_carry(Util::has_borrow(self.cpu.reg_a, acc).as_bit());
-        self.cpu.set_flag_zero((self.cpu.reg_a == acc).as_bit());
-        self.cpu.set_flag_add_sub(0b1);
-      }
+      0xbe => op_cp_with_a!(self, self.read_word(self.cpu.reg_hl(), false)),
       // 0xbf | CP A | 1 | 4 | Z 1 H C
-      0xbf => op_cp_with_a!(self, reg_a),
+      0xbf => op_cp_with_a!(self, self.cpu.reg_a),
       // 0xc0 | RET NZ | 1 | 20/8 | - - - -
       0xc0 => {
         if !self.cpu.flag_zero() {
