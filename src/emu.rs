@@ -866,15 +866,7 @@ impl Emu {
       // 0xc6 | ADD A,d8 | 2 | 8 | Z 0 H C
       0xc6 => {
         let w = self.read_opcode_word();
-        self
-          .cpu
-          .set_flag_half_carry((Util::has_half_carry(self.cpu.reg_a, w)).as_bit());
-        self
-          .cpu
-          .set_flag_carry((Util::has_carry(self.cpu.reg_a, w)).as_bit());
-        self.cpu.reg_a = self.cpu.reg_a.wrapping_add(w);
-        self.cpu.set_flag_zero((self.cpu.reg_a == 0).as_bit());
-        self.cpu.reset_flag_add_sub();
+        op_add_to_a!(self, w);
       }
       // 0xc7 | RST 00H | 1 | 16 | - - - -
       0xc7 => rst!(0x00, self),
@@ -882,7 +874,6 @@ impl Emu {
       0xc8 => {
         if self.cpu.flag_zero() {
           let addr = self.pop_dword();
-          println!("RET: {:#x?} at {:#x?}", addr, self.cpu.pc);
           self.cpu.pc = addr;
         } else {
           is_cycle_alternative = true;
@@ -902,7 +893,15 @@ impl Emu {
       // 0xcb | PREFIX CB | 1 | 4 | - - - -
       0xcb => self.read_prefix_instruction(),
       // 0xcc | CALL Z,a16 | 3 | 24/12 | - - - -
-      0xcc => unimplemented!("Opcode 0xcc is not yet implemented"),
+      0xcc => {
+        let addr = self.read_opcode_dword();
+        if self.cpu.flag_zero() {
+          self.push_dword(self.cpu.pc);
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xcd | CALL a16 | 3 | 24 | - - - -
       0xcd => {
         let addr = self.read_opcode_dword();
@@ -931,9 +930,24 @@ impl Emu {
         self.cpu.set_de(dw);
       }
       // 0xd2 | JP NC,a16 | 3 | 16/12 | - - - -
-      0xd2 => unimplemented!("Opcode 0xd2 is not yet implemented"),
+      0xd2 => {
+        let addr = self.read_opcode_dword();
+        if !self.cpu.flag_carry() {
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xd4 | CALL NC,a16 | 3 | 24/12 | - - - -
-      0xd4 => unimplemented!("Opcode 0xd4 is not yet implemented"),
+      0xd4 => {
+        let addr = self.read_opcode_dword();
+        if !self.cpu.flag_carry() {
+          self.push_dword(self.cpu.pc);
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xd5 | PUSH DE | 1 | 16 | - - - -
       0xd5 => self.push_dword(self.cpu.reg_de()),
       // 0xd6 | SUB d8 | 2 | 8 | Z 1 H C
@@ -971,9 +985,24 @@ impl Emu {
         self.cpu.pc = addr;
       }
       // 0xda | JP C,a16 | 3 | 16/12 | - - - -
-      0xda => unimplemented!("Opcode 0xda is not yet implemented"),
+      0xda => {
+        let addr = self.read_opcode_dword();
+        if self.cpu.flag_carry() {
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xdc | CALL C,a16 | 3 | 24/12 | - - - -
-      0xdc => unimplemented!("Opcode 0xdc is not yet implemented"),
+      0xdc => {
+        let addr = self.read_opcode_dword();
+        if self.cpu.flag_carry() {
+          self.push_dword(self.cpu.pc);
+          self.cpu.pc = addr;
+        } else {
+          is_cycle_alternative = true;
+        }
+      }
       // 0xde | SBC A,d8 | 2 | 8 | Z 1 H C
       0xde => unimplemented!("Opcode 0xde is not yet implemented"),
       // 0xdf | RST 18H | 1 | 16 | - - - -
@@ -1071,15 +1100,8 @@ impl Emu {
       0xfb => self.interrupts_enabled_new_value = true,
       // 0xfe | CP d8 | 2 | 8 | Z 1 H C
       0xfe => {
-        let acc = self.read_opcode_word();
-        self
-          .cpu
-          .set_flag_half_carry(Util::has_half_borrow(self.cpu.reg_a, acc).as_bit());
-        self
-          .cpu
-          .set_flag_carry(Util::has_borrow(self.cpu.reg_a, acc).as_bit());
-        self.cpu.set_flag_zero((self.cpu.reg_a == acc).as_bit());
-        self.cpu.set_flag_add_sub(0b1);
+        let w = self.read_opcode_word();
+        op_cp_with_a!(self, w);
       }
       // 0xff | RST 38H | 1 | 16 | - - - -
       0xff => rst!(0x38, self),
