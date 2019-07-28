@@ -1061,7 +1061,7 @@ impl Emu {
       }
       // 0xf1 | POP AF | 1 | 12 | Z N H C
       0xf1 => {
-        let dw = (self.pop_dword() & 0xf0) | self.cpu.reg_f as u16;
+        let dw = self.pop_dword() & 0xfff0;
         self.cpu.set_af(dw);
       }
       // 0xf2 | LD A,(C) | 2 | 8 | - - - -

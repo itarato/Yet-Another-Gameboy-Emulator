@@ -222,23 +222,18 @@ macro_rules! op_sub_reg_from_a {
 
 macro_rules! adc_a {
   ($sel:ident, $reg:expr) => {{
-    $sel.cpu.set_flag_carry(
-      Util::has_carry(
-        $sel.cpu.reg_a,
-        $reg.wrapping_add($sel.cpu.flag_carry().as_bit()),
-      )
-      .as_bit(),
-    );
-    $sel.cpu.set_flag_half_carry(
-      Util::has_half_carry(
-        $sel.cpu.reg_a,
-        $reg.wrapping_add($sel.cpu.flag_carry().as_bit()),
-      )
-      .as_bit(),
-    );
+    let old_carry = $sel.cpu.flag_carry().as_bit();
+    let acc = $reg.wrapping_add(old_carry);
+
+    $sel
+      .cpu
+      .set_flag_carry(Util::has_carry($sel.cpu.reg_a, acc).as_bit());
+    $sel
+      .cpu
+      .set_flag_half_carry(Util::has_half_carry($sel.cpu.reg_a, acc).as_bit());
 
     $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_add($reg);
-    $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_add($sel.cpu.flag_carry().as_bit());
+    $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_add(old_carry);
 
     $sel.cpu.set_flag_zero_for($sel.cpu.reg_a);
     $sel.cpu.reset_flag_add_sub();
