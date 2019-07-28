@@ -76,7 +76,7 @@ impl Debugger {
       bg_debug_canvas: background_debug_window.into_canvas().build().unwrap(),
       tile_debug_canvas: tile_debug_window.into_canvas().build().unwrap(),
       ttf_context: ttf::init().unwrap(),
-      pc_history: History::with_capacity(32),
+      pc_history: History::with_capacity(1024),
       debug_displays_on: true,
       log: File::create("./debug.log").unwrap(),
       log_on: false,
