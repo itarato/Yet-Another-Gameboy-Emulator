@@ -205,16 +205,16 @@ macro_rules! rot_left_reg {
 }
 
 macro_rules! op_sub_reg_from_a {
-  ($sel:ident, $reg:ident) => {{
+  ($sel:ident, $reg:expr) => {{
     $sel
       .cpu
-      .set_flag_half_carry(Util::has_half_borrow($sel.cpu.reg_a, $sel.cpu.$reg).as_bit());
+      .set_flag_half_carry(Util::has_half_borrow($sel.cpu.reg_a, $reg).as_bit());
 
     $sel
       .cpu
-      .set_flag_carry(Util::has_borrow($sel.cpu.reg_a, $sel.cpu.$reg).as_bit());
+      .set_flag_carry(Util::has_borrow($sel.cpu.reg_a, $reg).as_bit());
 
-    $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_sub($sel.cpu.$reg);
+    $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_sub($reg);
     $sel.cpu.set_flag_zero_for($sel.cpu.reg_a);
     $sel.cpu.set_flag_add_sub(0x1);
   }};
@@ -287,14 +287,14 @@ macro_rules! op_cp_with_a {
 }
 
 macro_rules! op_add_to_a {
-  ($sel:ident, $reg:ident) => {{
+  ($sel:ident, $reg:expr) => {{
     $sel
       .cpu
-      .set_flag_half_carry((Util::has_half_carry($sel.cpu.reg_a, $sel.cpu.$reg)).as_bit());
+      .set_flag_half_carry((Util::has_half_carry($sel.cpu.reg_a, $reg)).as_bit());
     $sel
       .cpu
-      .set_flag_carry((Util::has_carry($sel.cpu.reg_a, $sel.cpu.$reg)).as_bit());
-    $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_add($sel.cpu.$reg);
+      .set_flag_carry((Util::has_carry($sel.cpu.reg_a, $reg)).as_bit());
+    $sel.cpu.reg_a = $sel.cpu.reg_a.wrapping_add($reg);
     $sel.cpu.set_flag_zero(($sel.cpu.reg_a == 0).as_bit());
     $sel.cpu.reset_flag_add_sub();
   }};

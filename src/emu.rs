@@ -222,36 +222,37 @@ impl Emu {
     // dbg!("INTERRUPT CHECK");
 
     if self.interrupt_enabled_v_blank() && self.interrupt_flag_v_blank() {
-      self.pre_interrupt_status = self.read_word(0xff0f, false);
-
-      // Disable interrupts.
-      self.interrupts_enabled = false;
-
-      // Disable specific interrupt request.
-      let flag_off = Util::setbit(self.read_word(0xff0f, false), 0, 0x0);
-      self.write_word(0xff0f, flag_off);
-      self.cycles += 2;
-
-      // Save current PC.
-      self.push_dword(self.cpu.pc);
-      self.cycles += 2;
-
-      // Jump to interrupt instruction.
-      self.cpu.pc = 0x40;
-      self.cycles += 1;
-    // TODO These cycle advances needs to be considered for tick detection!!! -> Maybe not needed.
+      self.exec_interrupt(0, 0x40);
     } else if self.interrupt_enabled_lcd_stat() && self.interrupt_flag_lcd_stat() {
-      unimplemented!("<lcd_stat> interrupt has not been implemented.");
+      self.exec_interrupt(0, 0x48);
     } else if self.interrupt_enabled_timer() && self.interrupt_flag_timer() {
-      unimplemented!("<timer> interrupt has not been implemented.");
+      self.exec_interrupt(0, 0x50);
     } else if self.interrupt_enabled_serial() && self.interrupt_flag_serial() {
-      unimplemented!(
-        "<serial> interrupt has not been implemented.\n{:?}",
-        self.debugger.as_ref().map(|dbgr| dbgr.dump(&self))
-      );
+      self.exec_interrupt(0, 0x58);
     } else if self.interrupt_enabled_joypad() && self.interrupt_flag_joypad() {
-      unimplemented!("<joypad> interrupt has not been implemented.");
+      self.exec_interrupt(0, 0x60);
     }
+  }
+
+  fn exec_interrupt(&mut self, interrupt_bit_num: u32, interrupt_addr: u16) {
+    self.pre_interrupt_status = self.read_word(0xff0f, false);
+
+    // Disable interrupts.
+    self.interrupts_enabled = false;
+
+    // Disable specific interrupt request.
+    let flag_off = Util::setbit(self.read_word(0xff0f, false), interrupt_bit_num, 0x0);
+    self.write_word(0xff0f, flag_off);
+    self.cycles += 2;
+
+    // Save current PC.
+    self.push_dword(self.cpu.pc);
+    self.cycles += 2;
+
+    // Jump to interrupt instruction.
+    self.cpu.pc = interrupt_addr;
+    self.cycles += 1;
+    // TODO These cycle advances needs to be considered for tick detection!!! -> Maybe not needed.
   }
 
   fn handle_timer(&mut self, cycles_prev: u64) {
@@ -695,32 +696,21 @@ impl Emu {
       // 0x7f | LD A,A | 1 | 4 | - - - -
       0x7f => load_word_to_reg_from_reg!(reg_a, reg_a, self),
       // 0x80 | ADD A,B | 1 | 4 | Z 0 H C
-      0x80 => op_add_to_a!(self, reg_b),
+      0x80 => op_add_to_a!(self, self.cpu.reg_b),
       // 0x81 | ADD A,C | 1 | 4 | Z 0 H C
-      0x81 => op_add_to_a!(self, reg_c),
+      0x81 => op_add_to_a!(self, self.cpu.reg_c),
       // 0x82 | ADD A,D | 1 | 4 | Z 0 H C
-      0x82 => op_add_to_a!(self, reg_d),
+      0x82 => op_add_to_a!(self, self.cpu.reg_d),
       // 0x83 | ADD A,E | 1 | 4 | Z 0 H C
-      0x83 => op_add_to_a!(self, reg_e),
+      0x83 => op_add_to_a!(self, self.cpu.reg_e),
       // 0x84 | ADD A,H | 1 | 4 | Z 0 H C
-      0x84 => op_add_to_a!(self, reg_h),
+      0x84 => op_add_to_a!(self, self.cpu.reg_h),
       // 0x85 | ADD A,L | 1 | 4 | Z 0 H C
-      0x85 => op_add_to_a!(self, reg_l),
+      0x85 => op_add_to_a!(self, self.cpu.reg_l),
       // 0x86 | ADD A,(HL) | 1 | 8 | Z 0 H C
-      0x86 => {
-        let acc = self.read_word(self.cpu.reg_hl(), false);
-        self
-          .cpu
-          .set_flag_half_carry((Util::has_half_carry(self.cpu.reg_a, acc)).as_bit());
-        self
-          .cpu
-          .set_flag_carry((Util::has_carry(self.cpu.reg_a, acc)).as_bit());
-        self.cpu.reg_a = self.cpu.reg_a.wrapping_add(acc);
-        self.cpu.set_flag_zero((self.cpu.reg_a == 0).as_bit());
-        self.cpu.reset_flag_add_sub();
-      }
+      0x86 => op_add_to_a!(self, self.read_word(self.cpu.reg_hl(), false)),
       // 0x87 | ADD A,A | 1 | 4 | Z 0 H C
-      0x87 => op_add_to_a!(self, reg_a),
+      0x87 => op_add_to_a!(self, self.cpu.reg_a),
       // 0x88 | ADC A,B | 1 | 4 | Z 0 H C
       0x88 => adc_a!(self, self.cpu.reg_b),
       // 0x89 | ADC A,C | 1 | 4 | Z 0 H C
@@ -738,33 +728,21 @@ impl Emu {
       // 0x8f | ADC A,A | 1 | 4 | Z 0 H C
       0x8f => adc_a!(self, self.cpu.reg_a),
       // 0x90 | SUB B | 1 | 4 | Z 1 H C
-      0x90 => op_sub_reg_from_a!(self, reg_b),
+      0x90 => op_sub_reg_from_a!(self, self.cpu.reg_b),
       // 0x91 | SUB C | 1 | 4 | Z 1 H C
-      0x91 => op_sub_reg_from_a!(self, reg_c),
+      0x91 => op_sub_reg_from_a!(self, self.cpu.reg_c),
       // 0x92 | SUB D | 1 | 4 | Z 1 H C
-      0x92 => op_sub_reg_from_a!(self, reg_d),
+      0x92 => op_sub_reg_from_a!(self, self.cpu.reg_d),
       // 0x93 | SUB E | 1 | 4 | Z 1 H C
-      0x93 => op_sub_reg_from_a!(self, reg_e),
+      0x93 => op_sub_reg_from_a!(self, self.cpu.reg_e),
       // 0x94 | SUB H | 1 | 4 | Z 1 H C
-      0x94 => op_sub_reg_from_a!(self, reg_h),
+      0x94 => op_sub_reg_from_a!(self, self.cpu.reg_h),
       // 0x95 | SUB L | 1 | 4 | Z 1 H C
-      0x95 => op_sub_reg_from_a!(self, reg_l),
+      0x95 => op_sub_reg_from_a!(self, self.cpu.reg_l),
       // 0x96 | SUB (HL) | 1 | 8 | Z 1 H C
-      0x96 => {
-        let acc = self.read_word(self.cpu.reg_hl(), false);
-        self
-          .cpu
-          .set_flag_half_carry(Util::has_half_borrow(self.cpu.reg_a, acc).as_bit());
-        self
-          .cpu
-          .set_flag_carry(Util::has_borrow(self.cpu.reg_a, acc).as_bit());
-        self.cpu.reg_a = self.cpu.reg_a.wrapping_sub(acc);
-
-        self.cpu.set_flag_zero_for(self.cpu.reg_a);
-        self.cpu.set_flag_add_sub(0b1);
-      }
+      0x96 => op_sub_reg_from_a!(self, self.read_word(self.cpu.reg_hl(), false)),
       // 0x97 | SUB A | 1 | 4 | Z 1 H C
-      0x97 => op_sub_reg_from_a!(self, reg_a),
+      0x97 => op_sub_reg_from_a!(self, self.cpu.reg_a),
       // 0x98 | SBC A,B | 1 | 4 | Z 1 H C
       0x98 => unimplemented!("Opcode 0x98 is not yet implemented"),
       // 0x99 | SBC A,C | 1 | 4 | Z 1 H C
@@ -1085,7 +1063,7 @@ impl Emu {
 
         self.cpu.reset_flag_zero();
         self.cpu.reset_flag_add_sub();
-        
+
         self
           .cpu
           .set_flag_half_carry(Util::has_dw_half_carry(self.cpu.sp, w as u16).as_bit());
