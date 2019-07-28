@@ -1061,7 +1061,7 @@ impl Emu {
       }
       // 0xf1 | POP AF | 1 | 12 | Z N H C
       0xf1 => {
-        let dw = self.pop_dword();
+        let dw = (self.pop_dword() & 0xf0) | self.cpu.reg_f as u16;
         self.cpu.set_af(dw);
       }
       // 0xf2 | LD A,(C) | 2 | 8 | - - - -
@@ -1759,9 +1759,6 @@ impl Emu {
       0xff50 => dbg!(self.internal_rom_disabled = true),
       0x8000...0x9fff => {
         // Video ram
-        if addr == 0x9820 {
-          println!("0x9820 <- {:#x} -> {:#x?}", w, self.cpu);
-        }
         self.graphics.write_word(addr, w);
       }
       0xa000...0xbfff => self.mem.write_word(addr, w),

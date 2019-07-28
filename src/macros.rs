@@ -118,8 +118,8 @@ macro_rules! and_reg {
 macro_rules! set_dword_register {
     ($fname:ident, $reg_hi:ident, $reg_lo:ident) => (
       pub fn $fname(&mut self, dw: u16) {
-        self.$reg_hi = (dw >> 0x8) as u8;
-        self.$reg_lo = (dw & 0xff) as u8;
+        self.$reg_hi = dw.hi();
+        self.$reg_lo = dw.lo();
       }
     )
 }
