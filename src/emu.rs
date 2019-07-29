@@ -433,37 +433,31 @@ impl Emu {
       0x26 => load_word_to_reg!(reg_h, self),
       // 0x27 | DAA | 1 | 4 | Z - 0 C
       0x27 => {
-        let mut acc = 0x0u8;
+        let cy = self.cpu.flag_carry();
+        let hc = self.cpu.flag_half_carry();
+        let add = self.cpu.flag_add_sub();
 
-        if !self.cpu.flag_add_sub() {
-          let carry_from_lo = if self.cpu.reg_a.lo() >= 0xa { 0x1 } else { 0x0 };
+        let mut correction = 0;
+        let mut new_carry = false;
 
-          if self.cpu.flag_carry() || self.cpu.reg_a.hi() >= (0xa - carry_from_lo) {
-            acc |= 0x60;
-          }
-
-          if self.cpu.flag_half_carry() || self.cpu.reg_a.lo() >= 0xa {
-            acc |= 0x06;
-          }
-        } else {
-          if self.cpu.flag_half_carry() && self.cpu.reg_a.lo() >= 0x6 {
-            acc |= 0x0a;
-          }
-          if !self.cpu.flag_carry() && self.cpu.reg_a.hi() <= 0x8 {
-            acc |= 0xf0;
-          } else if self.cpu.flag_carry() && self.cpu.reg_a.hi() >= 0x7 {
-            acc |= 0xa0;
-          } else if self.cpu.flag_carry()
-            && self.cpu.reg_a.hi() >= 0x6
-            && self.cpu.flag_half_carry()
-          {
-            acc |= 0x90;
-          }
+        if hc || (!add && (self.cpu.reg_a & 0xf) > 0x9) {
+          correction |= 0x6;
         }
 
-        self
-          .cpu
-          .set_flag_carry(Util::has_carry(self.cpu.reg_a, acc).as_bit());
+        if cy || (!add && self.cpu.reg_a > 0x99) {
+          correction |= 0x60;
+          new_carry = true;
+        }
+
+        if add {
+          self.cpu.reg_a = self.cpu.reg_a.wrapping_sub(correction);
+        } else {
+          self.cpu.reg_a = self.cpu.reg_a.wrapping_add(correction);
+        }
+
+        self.cpu.reg_a &= 0xff;
+
+        self.cpu.set_flag_carry(new_carry.as_bit());
 
         self.cpu.set_flag_zero_for(self.cpu.reg_a);
         self.cpu.reset_flag_half_carry();
@@ -1756,7 +1750,7 @@ impl Emu {
         assert!(w <= 0x1f);
         self.rom_bank_number = w;
       }
-      0xff50 => dbg!(self.internal_rom_disabled = true),
+      0xff50 => self.internal_rom_disabled = true,
       0x8000...0x9fff => {
         // Video ram
         self.graphics.write_word(addr, w);
